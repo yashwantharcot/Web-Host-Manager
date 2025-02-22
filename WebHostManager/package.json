@@ -1,0 +1,22 @@
+{
+  "name": "webhostmanager",
+  "version": "1.0.0",
+  "description": "A web application for managing user authentication and data.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^5.10.9",
+    "jsonwebtoken": "^8.5.1",
+    "dotenv": "^8.2.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.4"
+  },
+  "author": "Your Name",
+  "license": "ISC"
+}
