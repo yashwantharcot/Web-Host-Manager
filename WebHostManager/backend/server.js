@@ -1,29 +1,34 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const sequelize = require('../config/database');
+const { User, Client, Domain, EmailAccount } = require('./models');
+const clientRoutes = require('./routes/clientRoutes');
+const domainRoutes = require('./routes/domainRoutes');
+const emailAccountRoutes = require('./routes/emailAccountRoutes');
+const authRoutes = require('./routes/authRoutes');
+const authMiddleware = require('./middleware/authMiddleware');
 
 // Load environment variables
 dotenv.config();
-require("dotenv").config();
-
-console.log('MONGO_URI:', process.env.MONGO_URI); // Add this line to check if MONGO_URI is loaded
 
 const app = express();
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB connected'))
-.catch(err => console.error('MongoDB connection error:', err));
+// Test the database connection
+sequelize.authenticate()
+  .then(() => console.log('PostgreSQL connected'))
+  .catch(err => console.error('PostgreSQL connection error:', err));
+
+// Sync models with the database
+sequelize.sync()
+  .then(() => console.log('Database synced'))
+  .catch(err => console.error('Database sync error:', err));
 
 // Middleware and routes
 app.use(express.json());
-app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/auth', authRoutes);
+app.use('/api/clients', authMiddleware, clientRoutes);
+app.use('/api/domains', authMiddleware, domainRoutes);
+app.use('/api/emailAccounts', authMiddleware, emailAccountRoutes);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server is running on http://localhost:${PORT}`));
-
-require("dotenv").config();
-console.log("MONGO_URI:", process.env.MONGO_URI);

@@ -1,25 +1,21 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
-exports.protect = async (req, res, next) => {
-  let token = req.headers.authorization;
-
-  if (token && token.startsWith('Bearer')) {
-    try {
-      token = token.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
-
-      if (!req.user) {
-        return res.status(401).json({ message: 'User not found' });
-      }
-
-      next();
-    } catch (err) {
-      console.error('Token verification failed:', err);
-      res.status(401).json({ message: 'Not authorized' });
-    }
-  } else {
-    res.status(401).json({ message: 'No token, authorization denied' });
+const authMiddleware = (req, res, next) => {
+  const token = req.headers['authorization'];
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
   }
+  const tokenParts = token.split(' ');
+  if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
+    return res.status(401).json({ error: 'Invalid token format' });
+  }
+  jwt.verify(tokenParts[1], process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    req.userId = decoded.userId;
+    next();
+  });
 };
+
+module.exports = authMiddleware;
