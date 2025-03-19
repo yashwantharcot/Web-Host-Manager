@@ -1,21 +1,11 @@
+const sequelize = require('../config/database');
 const User = require('./User');
 const Client = require('./Client');
 const Domain = require('./Domain');
 const EmailAccount = require('./EmailAccount');
 
-// Define associations
-User.hasMany(Client, { foreignKey: 'userId' });
-Client.belongsTo(User, { foreignKey: 'userId' });
+// Define associations here if needed
+User.hasMany(Client);
+Client.belongsTo(User);
 
-Client.hasMany(Domain, { foreignKey: 'clientId' });
-Domain.belongsTo(Client, { foreignKey: 'clientId' });
-
-Client.hasMany(EmailAccount, { foreignKey: 'clientId' });
-EmailAccount.belongsTo(Client, { foreignKey: 'clientId' });
-
-module.exports = {
-  User,
-  Client,
-  Domain,
-  EmailAccount,
-};
+module.exports = { sequelize, User, Client, Domain, EmailAccount };

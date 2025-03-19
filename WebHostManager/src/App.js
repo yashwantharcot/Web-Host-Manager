@@ -1,23 +1,22 @@
-import React from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import Register from "./pages/Register";
-import Login from "./pages/Login";
-import Profile from "./pages/Profile";
+import React from 'react';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import ClientList from './components/ClientList';
+import Login from './components/Login';
+import Register from './components/Register';
 
-function App() {
+const App = () => {
   return (
     <Router>
       <div>
-        <h1>Welcome to WebHostManager</h1>
-        <Routes>
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/profile" element={<Profile />} />
-        </Routes>
+        <Switch>
+          <Route path="/login" component={Login} />
+          <Route path="/register" component={Register} />
+          <Route path="/clients" component={ClientList} />
+        </Switch>
       </div>
     </Router>
   );
-}
+};
 
 export default App;
 
