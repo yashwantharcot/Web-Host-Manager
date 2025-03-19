@@ -1,7 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const sequelize = require('../config/database');
-const { User, Client, Domain, EmailAccount } = require('./models');
+const { sequelize, User, Client, Domain, EmailAccount } = require('./models');
 const clientRoutes = require('./routes/clientRoutes');
 const domainRoutes = require('./routes/domainRoutes');
 const emailAccountRoutes = require('./routes/emailAccountRoutes');
@@ -12,16 +11,21 @@ const authMiddleware = require('./middleware/authMiddleware');
 dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 5001;
 
 // Test the database connection
-sequelize.authenticate()
-  .then(() => console.log('PostgreSQL connected'))
-  .catch(err => console.error('PostgreSQL connection error:', err));
+(async () => {
+  try {
+    await sequelize.sync(); // Sync the database models
+    console.log('Database synced successfully.');
+  } catch (error) {
+    console.error('Error syncing database:', error);
+  }
+})();
 
-// Sync models with the database
-sequelize.sync()
-  .then(() => console.log('Database synced'))
-  .catch(err => console.error('Database sync error:', err));
+app.get('/', (req, res) => {
+  res.send('Server is running!');
+});
 
 // Middleware and routes
 app.use(express.json());
@@ -30,5 +34,6 @@ app.use('/api/clients', authMiddleware, clientRoutes);
 app.use('/api/domains', authMiddleware, domainRoutes);
 app.use('/api/emailAccounts', authMiddleware, emailAccountRoutes);
 
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server is running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
