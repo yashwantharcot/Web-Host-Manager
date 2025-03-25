@@ -1,0 +1,34 @@
+{
+  "name": "webhostmanager-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A web application for managing user authentication and data.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "dev": "nodemon backend/server.js"
+  },
+  "dependencies": {
+    "axios": "^0.21.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "4.0.3",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^8.2.0",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^8.5.1",
+    "pg": "^8.10.0",
+    "pg-hstore": "^2.3.3",
+    "sequelize": "^6.32.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.4"
+  },
+  "proxy": "http://localhost:5001",
+  "author": "Your Name",
+  "license": "ISC"
+}
