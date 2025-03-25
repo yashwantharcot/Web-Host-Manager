@@ -1,0 +1,39 @@
+{
+  "name": "web-host-manager-backend",
+  "version": "1.0.0",
+  "description": "Backend for Web Host Manager",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --config jest.integration.config.js",
+    "test:performance": "k6 run src/tests/performance/domain-api.js",
+    "migrate:test": "sequelize-cli db:migrate --env test",
+    "seed:test": "node src/tests/seeders/testData.js",
+    "setup:test": "bash setup-test-env.sh"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.35.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "nodemon": "^3.0.2",
+    "sequelize-cli": "^6.6.1",
+    "supertest": "^6.3.3"
+  }
+} 
