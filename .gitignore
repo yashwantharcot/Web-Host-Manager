@@ -5,17 +5,20 @@ node_modules/
 
 # Testing
 /coverage
+/cypress/videos/
+/cypress/screenshots/
 
 # Production
 /build
 /dist
 
-# Environment variables
+# Environment files
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.test
 
 # Logs
 npm-debug.log*
