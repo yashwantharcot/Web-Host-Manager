@@ -1,30 +1,22 @@
+'use strict';
+
 const express = require('express');
 const router = express.Router();
-const { getAllDomains, getDomainById, createDomain, updateDomain, deleteDomain } = require('../controllers/domainController');
-const auth = require('../middleware/auth');
+const domainController = require('../controllers/DomainController');
+const { auth } = require('../middleware/auth');
 
-// Apply authentication middleware to all routes
+// All routes require authentication
 router.use(auth);
 
-// Get all domains
-router.get('/', getAllDomains);
+// CRUD routes
+router.get('/', domainController.getAll);
+router.get('/:id', domainController.getById);
+router.post('/', domainController.create);
+router.put('/:id', domainController.update);
+router.delete('/:id', domainController.delete);
 
-// Get domain by ID
-router.get('/:id', getDomainById);
-
-// Create new domain
-router.post('/', createDomain);
-
-// Update domain
-router.put('/:id', updateDomain);
-
-// Delete domain
-router.delete('/:id', deleteDomain);
-
-// Get domains by client
-router.get('/client/:clientId', domainController.getDomainsByClient);
-
-// Get domains by website
-router.get('/website/:websiteId', domainController.getDomainsByWebsite);
+// Additional routes
+router.get('/:id/check-status', domainController.checkDomainStatus);
+router.put('/:id/dns-records', domainController.updateDNSRecords);
 
 module.exports = router; 

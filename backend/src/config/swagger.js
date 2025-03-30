@@ -1,37 +1,41 @@
+'use strict';
+
 const swaggerJsdoc = require('swagger-jsdoc');
 
 const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Web Host Manager API',
+      title: 'WebHost Manager API',
       version: '1.0.0',
-      description: 'API documentation for Web Host Manager application',
+      description: 'API documentation for WebHost Manager - A Comprehensive Client Data Management System',
+      contact: {
+        name: 'API Support',
+        email: 'support@example.com'
+      }
     },
     servers: [
       {
-        url: process.env.API_URL || 'http://localhost:5001',
-        description: 'Development server',
-      },
+        url: process.env.API_URL || 'http://localhost:3000',
+        description: 'Development server'
+      }
     ],
     components: {
       securitySchemes: {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
+          bearerFormat: 'JWT'
+        }
+      }
     },
-    security: [
-      {
-        bearerAuth: [],
-      },
-    ],
+    security: [{
+      bearerAuth: []
+    }]
   },
-  apis: ['./src/routes/*.js'], // Path to the API routes
+  apis: ['./src/routes/*.js']
 };
 
-const specs = swaggerJsdoc(options);
+const swaggerSpec = swaggerJsdoc(options);
 
-module.exports = specs; 
+module.exports = swaggerSpec; 

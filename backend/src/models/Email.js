@@ -15,28 +15,50 @@ const Email = sequelize.define('Email', {
     }
   },
   password: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    allowNull: false
   },
-  hostingProvider: {
-    type: DataTypes.STRING
-  },
-  quota: {
-    type: DataTypes.STRING
+  type: {
+    type: DataTypes.ENUM('webmail', 'pop3', 'imap'),
+    defaultValue: 'webmail'
   },
   status: {
-    type: DataTypes.ENUM('active', 'inactive', 'pending'),
+    type: DataTypes.ENUM('active', 'inactive', 'suspended'),
     defaultValue: 'active'
-  },
-  autoRenew: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  renewalCharge: {
-    type: DataTypes.DECIMAL(10, 2)
   },
   notes: {
     type: DataTypes.TEXT
+  },
+  clientId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Clients',
+      key: 'id'
+    }
+  },
+  websiteId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Websites',
+      key: 'id'
+    }
   }
+}, {
+  timestamps: true
 });
+
+// Define associations
+Email.associate = (models) => {
+  Email.belongsTo(models.Client, {
+    foreignKey: 'clientId',
+    onDelete: 'CASCADE'
+  });
+  Email.belongsTo(models.Website, {
+    foreignKey: 'websiteId',
+    onDelete: 'CASCADE'
+  });
+};
 
 module.exports = Email; 

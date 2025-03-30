@@ -2,75 +2,70 @@
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  class Website extends Model {
+  class EmailAccount extends Model {
     static associate(models) {
       // Define associations
-      Website.belongsTo(models.Client, {
-        foreignKey: 'client_id',
-        as: 'client'
-      });
-      Website.hasMany(models.Domain, {
+      EmailAccount.belongsTo(models.Website, {
         foreignKey: 'website_id',
-        as: 'domains'
-      });
-      Website.hasMany(models.EmailAccount, {
-        foreignKey: 'website_id',
-        as: 'email_accounts'
+        as: 'website'
       });
     }
   }
 
-  Website.init({
+  EmailAccount.init({
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
     },
-    client_id: {
+    website_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'clients',
+        model: 'websites',
         key: 'id'
       }
     },
-    name: {
+    email: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        notEmpty: true
+        isEmail: true
       }
     },
-    url: {
-      type: DataTypes.STRING,
+    type: {
+      type: DataTypes.ENUM('pop3', 'imap', 'smtp'),
       allowNull: false,
-      validate: {
-        isUrl: true
-      }
+      defaultValue: 'imap'
     },
-    hosting_provider: {
+    server: {
       type: DataTypes.STRING,
       allowNull: true
     },
-    hosting_plan: {
+    port: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    username: {
       type: DataTypes.STRING,
       allowNull: true
     },
-    hosting_expiry: {
-      type: DataTypes.DATE,
+    password: {
+      type: DataTypes.STRING,
       allowNull: true
     },
-    ssl_status: {
-      type: DataTypes.ENUM('active', 'expired', 'none'),
-      allowNull: false,
-      defaultValue: 'none'
+    quota: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: 'Storage quota in MB'
     },
-    ssl_expiry: {
-      type: DataTypes.DATE,
-      allowNull: true
+    used_space: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: 'Used space in MB'
     },
     status: {
-      type: DataTypes.ENUM('active', 'inactive', 'maintenance'),
+      type: DataTypes.ENUM('active', 'inactive', 'suspended'),
       allowNull: false,
       defaultValue: 'active'
     },
@@ -95,11 +90,11 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     sequelize,
-    modelName: 'Website',
-    tableName: 'websites',
+    modelName: 'EmailAccount',
+    tableName: 'email_accounts',
     timestamps: true,
     underscored: true
   });
 
-  return Website;
+  return EmailAccount;
 }; 
