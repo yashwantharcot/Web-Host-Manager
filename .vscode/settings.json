@@ -4,5 +4,6 @@
             "name": "Preset Connection",
             "connectionString": ""
         }
-    ]
+    ],
+    "git.ignoreLimitWarning": true
 }

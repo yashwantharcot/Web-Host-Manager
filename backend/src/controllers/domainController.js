@@ -1,251 +1,262 @@
-const { Domain, Client, Website } = require('../models');
+'use strict';
 
-exports.getAllDomains = async (req, res) => {
-  try {
-    const domains = await Domain.findAll({
-      include: [
-        { model: Client, attributes: ['id', 'name', 'company'] },
-        { model: Website, attributes: ['id', 'name', 'url'] }
-      ]
-    });
-    res.json(domains);
-  } catch (error) {
-    res.status(500).json({
-      error: 'Error fetching domains',
-      details: error.message
-    });
+const BaseController = require('./BaseController');
+const { Domain, Website, Client } = require('../models');
+
+class DomainController extends BaseController {
+  constructor() {
+    super(Domain);
   }
-};
 
-exports.getDomainById = async (req, res) => {
-  try {
-    const domain = await Domain.findByPk(req.params.id, {
-      include: [
-        { model: Client },
-        { model: Website }
-      ]
-    });
-
-    if (!domain) {
-      return res.status(404).json({
-        error: 'Domain not found'
+  async getAll(req, res) {
+    try {
+      const domains = await Domain.findAll({
+        where: { 
+          is_active: true,
+          website_id: req.query.website_id // Filter by website if specified
+        },
+        include: [{
+          model: Website,
+          as: 'website',
+          where: { is_active: true },
+          required: true,
+          include: [{
+            model: Client,
+            as: 'client',
+            where: { 
+              user_id: req.user.id,
+              is_active: true
+            },
+            required: true
+          }]
+        }]
       });
+      res.json(domains);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-
-    res.json(domain);
-  } catch (error) {
-    res.status(500).json({
-      error: 'Error fetching domain',
-      details: error.message
-    });
   }
-};
 
-exports.createDomain = async (req, res) => {
-  try {
-    const { name, registrar, registrationDate, expiryDate, clientId, websiteId } = req.body;
-    
-    // Validate required fields
-    if (!name || !registrar || !registrationDate || !expiryDate || !clientId) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        details: 'Name, registrar, registration date, expiry date, and client are required'
+  async getById(req, res) {
+    try {
+      const domain = await Domain.findOne({
+        where: { 
+          id: req.params.id,
+          is_active: true
+        },
+        include: [{
+          model: Website,
+          as: 'website',
+          where: { is_active: true },
+          required: true,
+          include: [{
+            model: Client,
+            as: 'client',
+            where: { 
+              user_id: req.user.id,
+              is_active: true
+            },
+            required: true
+          }]
+        }]
       });
-    }
 
-    // Validate dates
-    const regDate = new Date(registrationDate);
-    const expDate = new Date(expiryDate);
-    
-    if (isNaN(regDate.getTime()) || isNaN(expDate.getTime())) {
-      return res.status(400).json({
-        error: 'Invalid date format'
+      if (!domain) {
+        return res.status(404).json({ error: 'Domain not found' });
+      }
+
+      res.json(domain);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async create(req, res) {
+    try {
+      // Verify website belongs to current user's client
+      const website = await Website.findOne({
+        where: { 
+          id: req.body.website_id,
+          is_active: true
+        },
+        include: [{
+          model: Client,
+          as: 'client',
+          where: { 
+            user_id: req.user.id,
+            is_active: true
+          },
+          required: true
+        }]
       });
-    }
 
-    if (expDate <= regDate) {
-      return res.status(400).json({
-        error: 'Expiry date must be after registration date'
-      });
-    }
-
-    // Check if domain already exists
-    const existingDomain = await Domain.findOne({ where: { name } });
-    if (existingDomain) {
-      return res.status(400).json({
-        error: 'Domain already exists'
-      });
-    }
-
-    // Validate client exists
-    const client = await Client.findByPk(clientId);
-    if (!client) {
-      return res.status(400).json({
-        error: 'Client not found'
-      });
-    }
-
-    // Validate website if provided
-    if (websiteId) {
-      const website = await Website.findByPk(websiteId);
       if (!website) {
-        return res.status(400).json({
-          error: 'Website not found'
-        });
+        return res.status(404).json({ error: 'Website not found' });
       }
+
+      const domain = await Domain.create(req.body);
+      res.status(201).json(domain);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
-
-    // Create domain
-    const domain = await Domain.create(req.body);
-    
-    // Fetch the created domain with associations
-    const createdDomain = await Domain.findByPk(domain.id, {
-      include: [
-        { model: Client },
-        { model: Website }
-      ]
-    });
-
-    res.status(201).json(createdDomain);
-  } catch (error) {
-    res.status(500).json({
-      error: 'Error creating domain',
-      details: error.message
-    });
   }
-};
 
-exports.updateDomain = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, registrar, registrationDate, expiryDate, clientId, websiteId } = req.body;
-
-    const domain = await Domain.findByPk(id);
-    if (!domain) {
-      return res.status(404).json({
-        error: 'Domain not found'
+  async update(req, res) {
+    try {
+      const domain = await Domain.findOne({
+        where: { 
+          id: req.params.id,
+          is_active: true
+        },
+        include: [{
+          model: Website,
+          as: 'website',
+          where: { is_active: true },
+          required: true,
+          include: [{
+            model: Client,
+            as: 'client',
+            where: { 
+              user_id: req.user.id,
+              is_active: true
+            },
+            required: true
+          }]
+        }]
       });
-    }
 
-    // If name is being updated, validate it
-    if (name && name !== domain.name) {
-      const existingDomain = await Domain.findOne({ where: { name } });
-      if (existingDomain) {
-        return res.status(400).json({
-          error: 'Domain name already exists'
-        });
-      }
-    }
-
-    // Validate dates if being updated
-    if (registrationDate || expiryDate) {
-      const regDate = new Date(registrationDate || domain.registrationDate);
-      const expDate = new Date(expiryDate || domain.expiryDate);
-      
-      if (isNaN(regDate.getTime()) || isNaN(expDate.getTime())) {
-        return res.status(400).json({
-          error: 'Invalid date format'
-        });
+      if (!domain) {
+        return res.status(404).json({ error: 'Domain not found' });
       }
 
-      if (expDate <= regDate) {
-        return res.status(400).json({
-          error: 'Expiry date must be after registration date'
-        });
-      }
+      await domain.update(req.body);
+      res.json(domain);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
-
-    // Validate client if being updated
-    if (clientId) {
-      const client = await Client.findByPk(clientId);
-      if (!client) {
-        return res.status(400).json({
-          error: 'Client not found'
-        });
-      }
-    }
-
-    // Validate website if being updated
-    if (websiteId) {
-      const website = await Website.findByPk(websiteId);
-      if (!website) {
-        return res.status(400).json({
-          error: 'Website not found'
-        });
-      }
-    }
-
-    // Update domain
-    await domain.update(req.body);
-
-    // Fetch the updated domain with associations
-    const updatedDomain = await Domain.findByPk(id, {
-      include: [
-        { model: Client },
-        { model: Website }
-      ]
-    });
-
-    res.json(updatedDomain);
-  } catch (error) {
-    res.status(500).json({
-      error: 'Error updating domain',
-      details: error.message
-    });
   }
-};
 
-exports.deleteDomain = async (req, res) => {
-  try {
-    const domain = await Domain.findByPk(req.params.id);
-    if (!domain) {
-      return res.status(404).json({
-        error: 'Domain not found'
+  async delete(req, res) {
+    try {
+      const domain = await Domain.findOne({
+        where: { 
+          id: req.params.id,
+          is_active: true
+        },
+        include: [{
+          model: Website,
+          as: 'website',
+          where: { is_active: true },
+          required: true,
+          include: [{
+            model: Client,
+            as: 'client',
+            where: { 
+              user_id: req.user.id,
+              is_active: true
+            },
+            required: true
+          }]
+        }]
       });
+
+      if (!domain) {
+        return res.status(404).json({ error: 'Domain not found' });
+      }
+
+      await domain.update({ is_active: false });
+      res.json({ message: 'Domain deleted successfully' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-
-    await domain.destroy();
-    res.json({ message: 'Domain deleted successfully' });
-  } catch (error) {
-    res.status(500).json({
-      error: 'Error deleting domain',
-      details: error.message
-    });
   }
-};
 
-exports.getDomainsByClient = async (req, res) => {
-  try {
-    const domains = await Domain.findAll({
-      where: { clientId: req.params.clientId },
-      include: [
-        { model: Client },
-        { model: Website }
-      ]
-    });
-    res.json(domains);
-  } catch (error) {
-    res.status(500).json({
-      error: 'Error fetching client domains',
-      details: error.message
-    });
-  }
-};
+  async checkDomainStatus(req, res) {
+    try {
+      const domain = await Domain.findOne({
+        where: { 
+          id: req.params.id,
+          is_active: true
+        },
+        include: [{
+          model: Website,
+          as: 'website',
+          where: { is_active: true },
+          required: true,
+          include: [{
+            model: Client,
+            as: 'client',
+            where: { 
+              user_id: req.user.id,
+              is_active: true
+            },
+            required: true
+          }]
+        }]
+      });
 
-exports.getDomainsByWebsite = async (req, res) => {
-  try {
-    const domains = await Domain.findAll({
-      where: { websiteId: req.params.websiteId },
-      include: [
-        { model: Client },
-        { model: Website }
-      ]
-    });
-    res.json(domains);
-  } catch (error) {
-    res.status(500).json({
-      error: 'Error fetching website domains',
-      details: error.message
-    });
+      if (!domain) {
+        return res.status(404).json({ error: 'Domain not found' });
+      }
+
+      // Here you would implement domain status checking logic
+      // For now, we'll just return a mock response
+      const domainStatus = {
+        is_registered: true,
+        registration_date: domain.registration_date,
+        expiry_date: domain.expiry_date,
+        days_until_expiry: Math.ceil((domain.expiry_date - new Date()) / (1000 * 60 * 60 * 24)),
+        auto_renew: domain.auto_renew,
+        dns_records: domain.dns_records
+      };
+
+      // Update domain status based on expiry
+      const newStatus = domainStatus.days_until_expiry <= 0 ? 'expired' : 'active';
+      if (newStatus !== domain.status) {
+        await domain.update({ status: newStatus });
+      }
+
+      res.json(domainStatus);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   }
-}; 
+
+  async updateDNSRecords(req, res) {
+    try {
+      const domain = await Domain.findOne({
+        where: { 
+          id: req.params.id,
+          is_active: true
+        },
+        include: [{
+          model: Website,
+          as: 'website',
+          where: { is_active: true },
+          required: true,
+          include: [{
+            model: Client,
+            as: 'client',
+            where: { 
+              user_id: req.user.id,
+              is_active: true
+            },
+            required: true
+          }]
+        }]
+      });
+
+      if (!domain) {
+        return res.status(404).json({ error: 'Domain not found' });
+      }
+
+      const { dns_records } = req.body;
+      await domain.update({ dns_records });
+      res.json({ message: 'DNS records updated successfully' });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+}
+
+module.exports = new DomainController(); 

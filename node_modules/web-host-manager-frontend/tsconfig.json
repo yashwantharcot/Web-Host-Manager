@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["es5", "dom"],
+    "types": ["cypress", "node"],
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "baseUrl": "http://localhost:3000"
+  },
+  "include": ["**/*.ts"]
+}

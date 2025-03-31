@@ -1,50 +1,18 @@
-'use strict';
-
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
 
-const auth = async (req, res, next) => {
+const auth = (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
     if (!token) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return res.status(401).json({ error: 'No authentication token, access denied' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findOne({
-      where: { 
-        id: decoded.id,
-        is_active: true
-      }
-    });
-
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-
-    req.user = user;
-    req.token = token;
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = verified;
     next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid authentication token' });
+  } catch (err) {
+    res.status(401).json({ error: 'Token verification failed, authorization denied' });
   }
 };
 
-const adminAuth = async (req, res, next) => {
-  try {
-    await auth(req, res, () => {
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-      }
-      next();
-    });
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid authentication token' });
-  }
-};
-
-module.exports = {
-  auth,
-  adminAuth
-}; 
+module.exports = auth;
