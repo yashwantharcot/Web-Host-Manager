@@ -1,6 +1,5 @@
 const nodemailer = require('nodemailer');
 const { Domain, Website, Client, EmailAccount } = require('../models');
-const { Op } = require('sequelize');
 
 class NotificationService {
   constructor() {
@@ -20,21 +19,20 @@ class NotificationService {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-      const expiringDomains = await Domain.findAll({
-        where: {
-          expiry_date: {
-            [Op.lte]: thirtyDaysFromNow,
-            [Op.gt]: new Date()
-          },
-          status: 'active'
-        },
-        include: [
-          {
-            model: Website,
-            include: [{ model: Client }]
-          }
-        ]
-      });
+      // Mongoose query to find domains expiring in the next 30 days
+      const expiringDomains = await Domain._mongoose.find({
+        expiry_date: { $lte: thirtyDaysFromNow, $gt: new Date() },
+        status: 'active'
+      }).lean();
+
+      // attach website and client info
+      for (const d of expiringDomains) {
+        const website = await Website._mongoose.findById(d.website_id).lean();
+        d.Website = website;
+        if (website && website.client_id) {
+          d.Website.Client = await Client._mongoose.findById(website.client_id).lean();
+        }
+      }
 
       for (const domain of expiringDomains) {
         await this.sendDomainExpiryNotification(domain);
@@ -49,15 +47,15 @@ class NotificationService {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-      const expiringWebsites = await Website.findAll({
-        where: {
-          expiry_date: {
-            [Op.lte]: thirtyDaysFromNow,
-            [Op.gt]: new Date()
-          }
-        },
-        include: [{ model: Client }]
-      });
+      const expiringWebsites = await Website._mongoose.find({
+        expiry_date: { $lte: thirtyDaysFromNow, $gt: new Date() }
+      }).lean();
+
+      for (const w of expiringWebsites) {
+        if (w.client_id) {
+          w.Client = await Client._mongoose.findById(w.client_id).lean();
+        }
+      }
 
       for (const website of expiringWebsites) {
         await this.sendHostingExpiryNotification(website);

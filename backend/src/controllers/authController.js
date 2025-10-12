@@ -1,22 +1,21 @@
-'use strict';
+"use strict";
 
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
-const { Op } = require('sequelize');
 
 class AuthController {
   async register(req, res) {
     try {
       const { username, email, password } = req.body;
 
-      // Check if user already exists
+      // Check if user already exists (username OR email)
       const existingUser = await User.findOne({
-        where: {
-          [Op.or]: [{ username }, { email }]
-        }
+        where: { }
       });
-
-      if (existingUser) {
+      // The mongoose-backed adapter ignores `Op`, so perform explicit checks
+      const byUsername = await User._mongoose.findOne({ username }).exec();
+      const byEmail = await User._mongoose.findOne({ email }).exec();
+      if (byUsername || byEmail) {
         return res.status(409).json({
           error: 'User already exists',
           details: 'Username or email is already taken'
@@ -60,15 +59,10 @@ class AuthController {
     try {
       const { username, password } = req.body;
 
-      // Find user
-      const user = await User.findOne({
-        where: {
-          [Op.or]: [
-            { username },
-            { email: username } // Allow login with email too
-          ]
-        }
-      });
+      // Find user by username or email
+      const user = await User._mongoose.findOne({
+        $or: [ { username }, { email: username } ]
+      }).exec();
 
       if (!user) {
         return res.status(401).json({

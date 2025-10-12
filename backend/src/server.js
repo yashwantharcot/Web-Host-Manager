@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const sequelize = require('./config/database');
+const mongo = require('./config/mongo');
 const authRoutes = require('./routes/authRoutes');
 const clientRoutes = require('./routes/clientRoutes');
 const websiteRoutes = require('./routes/websiteRoutes');
@@ -25,13 +26,27 @@ app.use('/api/domains', domainRoutes);
 app.use('/api/emails', emailRoutes);
 
 // Database connection and server start
-sequelize.sync()
-  .then(() => {
-    console.log('Database connected successfully');
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+if (process.env.DB_TYPE === 'mongo') {
+  mongo.connect()
+    .then(() => {
+      console.log('MongoDB connected successfully');
+      app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error('Unable to connect to MongoDB:', error);
+      process.exit(1);
     });
-  })
-  .catch((error) => {
-    console.error('Unable to connect to the database:', error);
-  }); 
+} else {
+  sequelize.sync()
+    .then(() => {
+      console.log('Database connected successfully');
+      app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error('Unable to connect to the database:', error);
+    });
+}

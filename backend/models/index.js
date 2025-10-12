@@ -1,67 +1,44 @@
-const { Sequelize } = require('sequelize');
-const path = require('path');
+// Adapter: expose mongoose-backed models under backend/models so tests and
+// other legacy code that `require('../models')` keep working.
 
-// Load environment variables
-require('dotenv').config({
-  path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
-});
+const mongooseAdapter = require('../src/models/index.js');
 
-// Get environment-specific configuration
-const env = process.env.NODE_ENV || 'development';
-let config;
-
-try {
-  config = require('../config/database.js')[env];
-} catch (error) {
-  // If database.js doesn't exist or has issues, use environment variables
-  config = {
-    database: process.env.DB_NAME,
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: 'postgres',
-    logging: env === 'test' ? false : console.log,
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
+// Minimal `sequelize` object used by tests/setup.js which calls `sequelize.sync({force:true})`
+// and `sequelize.close()`. We implement those to operate on the mongoose connection.
+const sequelize = {
+  async close() {
+    try {
+      if (mongooseAdapter && mongooseAdapter.mongoose && mongooseAdapter.mongoose.disconnect) {
+        await mongooseAdapter.mongoose.disconnect();
+      }
+    } catch (e) {
+      // ignore
     }
-  };
-}
-
-// Create Sequelize instance
-const sequelize = new Sequelize(
-  config.database,
-  config.username,
-  config.password,
-  {
-    host: config.host,
-    port: config.port,
-    dialect: config.dialect,
-    logging: config.logging,
-    pool: config.pool
+  },
+  async sync(options = {}) {
+    // If force is true, clear all collections to emulate fresh SQL schema
+    if (options.force) {
+      const conn = mongooseAdapter.mongoose.connection;
+      if (conn && conn.collections) {
+        const collections = Object.keys(conn.collections);
+        for (const name of collections) {
+          try {
+            await conn.collections[name].deleteMany({});
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+    }
+    return Promise.resolve();
   }
-);
-
-// Import models
-const models = {
-  User: require('./User')(sequelize),
-  Client: require('./Client')(sequelize),
-  Domain: require('./Domain')(sequelize),
-  EmailAccount: require('./EmailAccount')(sequelize)
 };
 
-// Initialize associations
-Object.keys(models).forEach(modelName => {
-  if ('associate' in models[modelName]) {
-    models[modelName].associate(models);
-  }
-});
-
-// Export models and sequelize instance
+// Export the mongoose-backed model adapters (User, Client, Domain, EmailAccount)
 module.exports = {
   sequelize,
-  ...models
+  User: mongooseAdapter.User,
+  Client: mongooseAdapter.Client,
+  Domain: mongooseAdapter.Domain,
+  EmailAccount: mongooseAdapter.EmailAccount
 };

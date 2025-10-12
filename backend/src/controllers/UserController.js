@@ -14,14 +14,10 @@ class UserController extends BaseController {
     try {
       const { username, email, password, first_name, last_name } = req.body;
 
-      // Check if user already exists
-      const existingUser = await User.findOne({
-        where: {
-          [Op.or]: [{ email }, { username }]
-        }
-      });
-
-      if (existingUser) {
+      // Check if user already exists (username or email)
+      const byEmail = await User._mongoose.findOne({ email }).exec();
+      const byUsername = await User._mongoose.findOne({ username }).exec();
+      if (byEmail || byUsername) {
         return res.status(400).json({
           error: 'User with this email or username already exists'
         });
@@ -67,8 +63,8 @@ class UserController extends BaseController {
     try {
       const { email, password } = req.body;
 
-      // Find user
-      const user = await User.findOne({ where: { email } });
+  // Find user
+  const user = await User._mongoose.findOne({ email }).exec();
       if (!user) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
@@ -127,7 +123,7 @@ class UserController extends BaseController {
 
       // Check if email is being changed and if it's already taken
       if (email && email !== user.email) {
-        const existingUser = await User.findOne({ where: { email } });
+          const existingUser = await User._mongoose.findOne({ email }).exec();
         if (existingUser) {
           return res.status(400).json({
             error: 'Email is already taken'
