@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { mongoose } = require('../../config/mongo');
+const { mongoose, connect } = require('../../config/mongo');
 
 const db = {};
 
@@ -14,5 +14,6 @@ fs.readdirSync(__dirname)
   });
 
 db.mongoose = mongoose;
+db.connect = connect;
 
 module.exports = db;

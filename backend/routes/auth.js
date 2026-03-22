@@ -58,18 +58,30 @@ router.post('/register', createValidator(userSchemas.register), async (req, res,
 // Login user
 router.post('/login', createValidator(userSchemas.login), async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
+    const identifier = email || username;
 
-    // Find user by email
-    const user = await User.findOne({ where: { email } });
+    if (!identifier) {
+      throw new AppError(400, 'Please provide an email or username');
+    }
+
+    // Find user by email or username
+    const user = await User.findOne({
+      where: {
+        [Op.or]: [{ email: identifier }, { username: identifier }]
+      }
+    });
+
     if (!user) {
-      throw new AppError(401, 'Invalid email or password');
+      console.error(`Login failed: User not found for identifier ${identifier}`);
+      throw new AppError(401, 'Invalid credentials');
     }
 
     // Verify password
     const isValidPassword = await user.validatePassword(password);
     if (!isValidPassword) {
-      throw new AppError(401, 'Invalid email or password');
+      console.error(`Login failed: Invalid password for user ${user.username}`);
+      throw new AppError(401, 'Invalid credentials');
     }
 
     // Update last login

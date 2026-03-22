@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -20,10 +20,22 @@ api.interceptors.request.use((config) => {
 
 // Add response interceptor to handle errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Automatically unwrap the standard backend response structure: { status: 'success', data: { ... } }
+    if (response.data && response.data.status === 'success' && response.data.data) {
+      const data = response.data.data;
+      // If data has only one key and it's an array or object, return that value
+      // This helps with endpoints that return { data: { clients: [...] } }
+      const keys = Object.keys(data);
+      if (keys.length === 1) {
+        return data[keys[0]];
+      }
+      return data;
+    }
+    return response.data;
+  },
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
@@ -39,29 +51,29 @@ export const authService = {
 
 // Client Service
 export const clientService = {
-  getAll: () => api.get('/clients'),
-  getById: (id) => api.get(`/clients/${id}`),
-  create: (data) => api.post('/clients', data),
-  update: (id, data) => api.put(`/clients/${id}`, data),
-  delete: (id) => api.delete(`/clients/${id}`),
+  getAllClients: () => api.get('/clients'),
+  getClient: (id) => api.get(`/clients/${id}`),
+  createClient: (data) => api.post('/clients', data),
+  updateClient: (id, data) => api.put(`/clients/${id}`, data),
+  deleteClient: (id) => api.delete(`/clients/${id}`),
 };
 
 // Website Service
 export const websiteService = {
-  getAll: () => api.get('/websites'),
-  getById: (id) => api.get(`/websites/${id}`),
-  create: (data) => api.post('/websites', data),
-  update: (id, data) => api.put(`/websites/${id}`, data),
-  delete: (id) => api.delete(`/websites/${id}`),
+  getAllWebsites: () => api.get('/websites'),
+  getWebsite: (id) => api.get(`/websites/${id}`),
+  createWebsite: (data) => api.post('/websites', data),
+  updateWebsite: (id, data) => api.put(`/websites/${id}`, data),
+  deleteWebsite: (id) => api.delete(`/websites/${id}`),
 };
 
 // Domain Service
 export const domainService = {
-  getAll: () => api.get('/domains'),
-  getById: (id) => api.get(`/domains/${id}`),
-  create: (data) => api.post('/domains', data),
-  update: (id, data) => api.put(`/domains/${id}`, data),
-  delete: (id) => api.delete(`/domains/${id}`),
+  getAllDomains: () => api.get('/domains'),
+  getDomain: (id) => api.get(`/domains/${id}`),
+  createDomain: (data) => api.post('/domains', data),
+  updateDomain: (id, data) => api.put(`/domains/${id}`, data),
+  deleteDomain: (id) => api.delete(`/domains/${id}`),
 };
 
 // Email Service

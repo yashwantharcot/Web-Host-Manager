@@ -1,20 +1,25 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { Box } from '@chakra-ui/react';
 import ClientList from './components/ClientList';
 import Login from './components/Login';
 import Register from './components/Register';
+import Navbar from './components/layout/Navbar';
+import ResponsiveLayout from './components/layout/ResponsiveLayout';
 
 const App = () => {
   return (
     <Router>
-      <div>
-        <Switch>
-          <Route path="/login" component={Login} />
-          <Route path="/register" component={Register} />
-          <Route path="/clients" component={ClientList} />
-          <Route path="/" exact component={Login} /> {/* Default route */}
-        </Switch>
-      </div>
+      <Box minH="100vh" bg="gray.50">
+        <Navbar />
+        <ResponsiveLayout>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/clients" element={<ClientList />} />
+            <Route path="/" element={<Login />} />
+          </Routes>
+        </ResponsiveLayout>
+      </Box>
     </Router>
   );
 };

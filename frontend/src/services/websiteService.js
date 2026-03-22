@@ -2,22 +2,22 @@ import api from './api';
 
 export const getAllWebsites = async () => {
   const response = await api.get('/websites');
-  return response.data;
+  return response;
 };
 
 export const getWebsiteById = async (id) => {
   const response = await api.get(`/websites/${id}`);
-  return response.data;
+  return response;
 };
 
 export const createWebsite = async (websiteData) => {
   const response = await api.post('/websites', websiteData);
-  return response.data;
+  return response;
 };
 
 export const updateWebsite = async (id, websiteData) => {
   const response = await api.put(`/websites/${id}`, websiteData);
-  return response.data;
+  return response;
 };
 
 export const deleteWebsite = async (id) => {

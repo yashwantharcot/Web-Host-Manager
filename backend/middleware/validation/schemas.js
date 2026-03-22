@@ -10,9 +10,10 @@ const userSchemas = {
   }),
 
   login: Joi.object({
-    email: Joi.string().email().required(),
+    username: Joi.string().min(3).max(50),
+    email: Joi.string().email(),
     password: Joi.string().required()
-  })
+  }).xor('username', 'email')
 };
 
 // Client validation schemas
@@ -20,7 +21,7 @@ const clientSchemas = {
   create: Joi.object({
     name: Joi.string().min(2).max(100).required(),
     email: Joi.string().email().required(),
-    phone: Joi.string().pattern(/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/).allow(null, ''),
+    phone: Joi.string().pattern(/^[+0-9\s().-]{7,20}$/).allow(null, ''),
     company: Joi.string().allow(null, ''),
     address: Joi.string().allow(null, ''),
     notes: Joi.string().allow(null, ''),
@@ -30,7 +31,7 @@ const clientSchemas = {
   update: Joi.object({
     name: Joi.string().min(2).max(100),
     email: Joi.string().email(),
-    phone: Joi.string().pattern(/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/).allow(null, ''),
+    phone: Joi.string().pattern(/^[+0-9\s().-]{7,20}$/).allow(null, ''),
     company: Joi.string().allow(null, ''),
     address: Joi.string().allow(null, ''),
     notes: Joi.string().allow(null, ''),

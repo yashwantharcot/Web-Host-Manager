@@ -15,6 +15,12 @@ const sequelize = {
       // ignore
     }
   },
+  async authenticate() {
+    if (mongooseAdapter.connect) {
+      return mongooseAdapter.connect();
+    }
+    return Promise.resolve();
+  },
   async sync(options = {}) {
     // If force is true, clear all collections to emulate fresh SQL schema
     if (options.force) {

@@ -128,5 +128,6 @@ Object.keys(mongooseModels).forEach(k => {
 
 // Also export the raw mongoose instance for direct use
 db.mongoose = mongooseModels.mongoose;
+db.connect = mongooseModels.connect;
 
 module.exports = db;
