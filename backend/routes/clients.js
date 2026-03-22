@@ -58,8 +58,14 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', createValidator(clientSchemas.create), async (req, res, next) => {
   try {
     const client = await Client.create({
-      ...req.body,
-      userId: req.user.id
+      user_id: req.user.id,
+      company_name: req.body.company,
+      contact_name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+      address: req.body.address,
+      notes: req.body.notes,
+      status: req.body.status
     });
 
     res.status(201).json({
@@ -87,7 +93,16 @@ router.patch('/:id', createValidator(clientSchemas.update), async (req, res, nex
       throw new AppError(404, 'Client not found');
     }
 
-    await client.update(req.body);
+    const updateData = {};
+    if (req.body.company) updateData.company_name = req.body.company;
+    if (req.body.name) updateData.contact_name = req.body.name;
+    if (req.body.email) updateData.email = req.body.email;
+    if (req.body.phone) updateData.phone = req.body.phone;
+    if (req.body.address) updateData.address = req.body.address;
+    if (req.body.notes) updateData.notes = req.body.notes;
+    if (req.body.status) updateData.status = req.body.status;
+
+    await client.update(updateData);
 
     res.json({
       status: 'success',
