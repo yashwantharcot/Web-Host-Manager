@@ -42,12 +42,28 @@ JWT_SECRET=your_jwt_secret
 PORT=5000
 ```
 
-3. Start the development servers:
+## Starting the Development Servers
+
+To run the application locally, you need to start both the backend and frontend development servers.
+
+### 1. Start the Backend Server
 ```bash
+cd backend
+npm install
+npm run dev
+```
+The backend server will run on `http://127.0.0.1:5000` (by default, if configured in `.env`).
+
+### 2. Start the Frontend Server
+```bash
+cd frontend
+npm install
 npm start
 ```
+The React application will launch at `http://localhost:3000`. 
 
-This will start both the frontend (port 3000) and backend (port 5000) servers concurrently.
+> [!NOTE]
+> The frontend is configured to proxy API requests to `http://127.0.0.1:5000` automatically.
 
 ## Features
 
