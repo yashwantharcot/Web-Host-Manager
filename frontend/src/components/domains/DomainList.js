@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -16,6 +16,7 @@ import {
   Select,
   VStack,
   Text,
+  Heading,
   useDisclosure,
   Modal,
   ModalOverlay,
@@ -23,204 +24,74 @@ import {
   ModalHeader,
   ModalBody,
   ModalCloseButton,
-  Checkbox,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Drawer,
-  DrawerBody,
-  DrawerHeader,
-  DrawerOverlay,
-  DrawerContent,
-  DrawerCloseButton,
-  FormControl,
-  FormLabel,
-  Switch,
   useColorModeValue,
+  Spinner,
+  Center,
 } from '@chakra-ui/react';
-import { EditIcon, DeleteIcon, AddIcon, SearchIcon, DownloadIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import domainService from '../../services/domainService';
+import { EditIcon, DeleteIcon, AddIcon, SearchIcon, DownloadIcon } from '@chakra-ui/icons';
+import { domainService } from '../../services/api';
 import DomainForm from './DomainForm';
-import { format } from 'date-fns';
-import * as XLSX from 'xlsx';
+// Removed date-fns and xlsx dependencies
 
-const DomainList = () => {
-  const [domains, setDomains] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDomains, setSelectedDomains] = useState([]);
+const DomainList = ({ clientId, domains: initialDomains, onUpdate }) => {
+  const [domains, setDomains] = useState(initialDomains || []);
+  const [loading, setLoading] = useState(!initialDomains);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    status: '',
-    registrar: '',
-    autoRenew: '',
-    expiringSoon: false,
-  });
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 10;
-
+  const [statusFilter, setStatusFilter] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState(null);
+  
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [editingDomain, setEditingDomain] = useState(null);
-  const { isOpen: isFilterOpen, onOpen: onFilterOpen, onClose: onFilterClose } = useDisclosure();
 
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  useEffect(() => {
-    fetchDomains();
-  }, [currentPage, filters, searchTerm]);
-
-  const fetchDomains = async () => {
+  const fetchDomains = useCallback(async () => {
+    if (initialDomains && !clientId) return;
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await domainService.getAll();
-      let filteredDomains = [...response];
-
-      // Apply filters
-      if (filters.status) {
-        filteredDomains = filteredDomains.filter(d => d.status === filters.status);
-      }
-      if (filters.registrar) {
-        filteredDomains = filteredDomains.filter(d => d.registrar === filters.registrar);
-      }
-      if (filters.autoRenew !== '') {
-        filteredDomains = filteredDomains.filter(d => d.autoRenew === (filters.autoRenew === 'true'));
-      }
-      if (filters.expiringSoon) {
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        filteredDomains = filteredDomains.filter(d => {
-          const expiryDate = new Date(d.expiryDate);
-          return expiryDate <= thirtyDaysFromNow && expiryDate > new Date();
-        });
-      }
-
-      // Apply search
-      if (searchTerm) {
-        filteredDomains = filteredDomains.filter(d =>
-          d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          d.registrar.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          d.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-
-      // Apply sorting
-      if (sortConfig.key) {
-        filteredDomains.sort((a, b) => {
-          if (a[sortConfig.key] < b[sortConfig.key]) {
-            return sortConfig.direction === 'asc' ? -1 : 1;
-          }
-          if (a[sortConfig.key] > b[sortConfig.key]) {
-            return sortConfig.direction === 'asc' ? 1 : -1;
-          }
-          return 0;
-        });
-      }
-
-      // Apply pagination
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      const paginatedDomains = filteredDomains.slice(startIndex, endIndex);
-      setTotalPages(Math.ceil(filteredDomains.length / itemsPerPage));
-      setDomains(paginatedDomains);
+      const data = clientId 
+        ? await domainService.getDomainsByClient(clientId)
+        : await domainService.getAllDomains();
+      setDomains(data || []);
     } catch (error) {
       toast({
         title: 'Error fetching domains',
         description: error.message,
         status: 'error',
-        duration: 5000,
-        isClosable: true,
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId, initialDomains, toast]);
+
+  useEffect(() => {
+    if (!initialDomains || clientId) {
+      fetchDomains();
+    }
+  }, [fetchDomains, initialDomains, clientId]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this domain?')) {
       try {
-        await domainService.delete(id);
-        toast({
-          title: 'Domain deleted successfully',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+        await domainService.deleteDomain(id);
+        toast({ title: 'Domain deleted', status: 'success' });
+        if (onUpdate) onUpdate();
         fetchDomains();
       } catch (error) {
-        toast({
-          title: 'Error deleting domain',
-          description: error.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        toast({ title: 'Error deleting domain', description: error.message, status: 'error' });
       }
     }
   };
 
   const handleEdit = (domain) => {
-    setEditingDomain(domain);
+    setSelectedDomain(domain);
     onOpen();
   };
 
-  const handleSubmit = async (formData) => {
-    try {
-      if (editingDomain) {
-        await domainService.update(editingDomain.id, formData);
-        toast({
-          title: 'Domain updated successfully',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-      } else {
-        await domainService.create(formData);
-        toast({
-          title: 'Domain created successfully',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-      onClose();
-      fetchDomains();
-    } catch (error) {
-      toast({
-        title: `Error ${editingDomain ? 'updating' : 'creating'} domain`,
-        description: error.message,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedDomains.length} domains?`)) {
-      try {
-        await Promise.all(selectedDomains.map(id => domainService.delete(id)));
-        toast({
-          title: 'Domains deleted successfully',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-        setSelectedDomains([]);
-        fetchDomains();
-      } catch (error) {
-        toast({
-          title: 'Error deleting domains',
-          description: error.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    }
+  const handleFormSuccess = () => {
+    onClose();
+    if (onUpdate) onUpdate();
+    fetchDomains();
   };
 
   const handleExport = () => {
@@ -228,238 +99,149 @@ const DomainList = () => {
       Name: domain.name,
       Registrar: domain.registrar,
       Status: domain.status,
-      'Registration Date': format(new Date(domain.registrationDate), 'yyyy-MM-dd'),
-      'Expiry Date': format(new Date(domain.expiryDate), 'yyyy-MM-dd'),
+      'Registration Date': domain.registrationDate ? new Date(domain.registrationDate).toLocaleDateString() : 'N/A',
+      'Expiry Date': domain.expiryDate ? new Date(domain.expiryDate).toLocaleDateString() : 'N/A',
       'Auto Renew': domain.autoRenew ? 'Yes' : 'No',
-      'Renewal Charge': domain.renewalCharge,
-      Client: domain.client?.name || '',
-      Website: domain.website?.name || '',
+      Client: domain.Client?.name || domain.clientName || '',
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Domains');
-    XLSX.writeFile(wb, 'domains.xlsx');
-  };
-
-  const handleSort = (key) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
-    }));
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(row => Object.values(row).join(',')).join('\n');
+    const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "domains.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'active':
-        return 'green';
-      case 'expired':
-        return 'red';
-      case 'pending':
-        return 'yellow';
-      case 'suspended':
-        return 'purple';
-      default:
-        return 'gray';
+    switch (status?.toLowerCase()) {
+      case 'active': return 'green';
+      case 'expired': return 'red';
+      case 'pending': return 'yellow';
+      case 'suspended': return 'purple';
+      default: return 'gray';
     }
   };
 
+  const filteredDomains = domains.filter(domain => {
+    const matchesSearch = domain.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         domain.registrar?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = !statusFilter || domain.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  if (loading) {
+    return (
+      <Center height="200px">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
+    );
+  }
+
   return (
     <Box>
-      <HStack mb={4} justify="space-between">
-        <HStack>
-          <Input
-            placeholder="Search domains..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            width="300px"
-          />
-          <Button leftIcon={<SearchIcon />} onClick={onFilterOpen}>
-            Filters
-          </Button>
-        </HStack>
-        <HStack>
-          {selectedDomains.length > 0 && (
-            <Button colorScheme="red" onClick={handleBulkDelete}>
-              Delete Selected ({selectedDomains.length})
+      <VStack spacing={6} align="stretch">
+        <HStack justifyContent="space-between" wrap="wrap" spacing={4}>
+          <Heading size="lg">Domains</Heading>
+          <HStack spacing={3}>
+            <Input
+              placeholder="Search domains..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              width="250px"
+              bg="white"
+            />
+            <Select
+              placeholder="All Statuses"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              width="150px"
+              bg="white"
+            >
+              <option value="active">Active</option>
+              <option value="expired">Expired</option>
+              <option value="pending">Pending</option>
+              <option value="suspended">Suspended</option>
+            </Select>
+            <Button leftIcon={<DownloadIcon />} onClick={handleExport} variant="outline">
+              Export
             </Button>
-          )}
-          <Button leftIcon={<DownloadIcon />} onClick={handleExport}>
-            Export
-          </Button>
-          <Button colorScheme="blue" onClick={() => {
-            setEditingDomain(null);
-            onOpen();
-          }}>
-            Add Domain
-          </Button>
+            <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={() => { setSelectedDomain(null); onOpen(); }}>
+              Add Domain
+            </Button>
+          </HStack>
         </HStack>
-      </HStack>
 
-      <Box overflowX="auto">
-        <Table variant="simple" bg={bgColor} borderWidth="1px" borderColor={borderColor}>
-          <Thead>
-            <Tr>
-              <Th>
-                <Checkbox
-                  isChecked={selectedDomains.length === domains.length}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedDomains(domains.map(d => d.id));
-                    } else {
-                      setSelectedDomains([]);
-                    }
-                  }}
-                />
-              </Th>
-              <Th cursor="pointer" onClick={() => handleSort('name')}>
-                Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </Th>
-              <Th cursor="pointer" onClick={() => handleSort('registrar')}>
-                Registrar {sortConfig.key === 'registrar' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </Th>
-              <Th>Status</Th>
-              <Th cursor="pointer" onClick={() => handleSort('registrationDate')}>
-                Registration Date {sortConfig.key === 'registrationDate' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </Th>
-              <Th cursor="pointer" onClick={() => handleSort('expiryDate')}>
-                Expiry Date {sortConfig.key === 'expiryDate' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </Th>
-              <Th>Auto Renew</Th>
-              <Th>Actions</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {domains.map((domain) => (
-              <Tr key={domain.id}>
-                <Td>
-                  <Checkbox
-                    isChecked={selectedDomains.includes(domain.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedDomains([...selectedDomains, domain.id]);
-                      } else {
-                        setSelectedDomains(selectedDomains.filter(id => id !== domain.id));
-                      }
-                    }}
-                  />
-                </Td>
-                <Td>{domain.name}</Td>
-                <Td>{domain.registrar}</Td>
-                <Td>
-                  <Badge colorScheme={getStatusColor(domain.status)}>
-                    {domain.status}
-                  </Badge>
-                </Td>
-                <Td>{format(new Date(domain.registrationDate), 'yyyy-MM-dd')}</Td>
-                <Td>{format(new Date(domain.expiryDate), 'yyyy-MM-dd')}</Td>
-                <Td>{domain.autoRenew ? 'Yes' : 'No'}</Td>
-                <Td>
-                  <HStack spacing={2}>
-                    <IconButton
-                      icon={<EditIcon />}
-                      size="sm"
-                      onClick={() => handleEdit(domain)}
-                      colorScheme="blue"
-                    />
-                    <IconButton
-                      icon={<DeleteIcon />}
-                      size="sm"
-                      onClick={() => handleDelete(domain.id)}
-                      colorScheme="red"
-                    />
-                  </HStack>
-                </Td>
+        <Box overflowX="auto" borderWidth="1px" borderRadius="lg" bg="white">
+          <Table variant="simple">
+            <Thead bg="gray.50">
+              <Tr>
+                <Th>Name</Th>
+                <Th>Registrar</Th>
+                <Th>Expiry</Th>
+                <Th>Auto Renew</Th>
+                <Th>Status</Th>
+                <Th>Actions</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </Box>
+            </Thead>
+            <Tbody>
+              {filteredDomains.map((domain) => (
+                <Tr key={domain.id} _hover={{ bg: 'gray.50' }}>
+                  <Td fontWeight="medium">{domain.name}</Td>
+                  <Td>{domain.registrar}</Td>
+                  <Td>{domain.expiryDate ? new Date(domain.expiryDate).toLocaleDateString() : 'N/A'}</Td>
 
-      <HStack mt={4} justify="center">
-        <Button
-          isDisabled={currentPage === 1}
-          onClick={() => setCurrentPage(prev => prev - 1)}
-        >
-          Previous
-        </Button>
-        <Text>
-          Page {currentPage} of {totalPages}
-        </Text>
-        <Button
-          isDisabled={currentPage === totalPages}
-          onClick={() => setCurrentPage(prev => prev + 1)}
-        >
-          Next
-        </Button>
-      </HStack>
+                  <Td>
+                    <Badge colorScheme={domain.autoRenew ? 'green' : 'gray'}>
+                      {domain.autoRenew ? 'Yes' : 'No'}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <Badge colorScheme={getStatusColor(domain.status)}>
+                      {domain.status}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <HStack spacing={2}>
+                      <IconButton size="sm" icon={<EditIcon />} onClick={() => handleEdit(domain)} aria-label="Edit domain" />
+                      <IconButton size="sm" icon={<DeleteIcon />} colorScheme="red" onClick={() => handleDelete(domain.id)} aria-label="Delete domain" />
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+              {filteredDomains.length === 0 && (
+                <Tr>
+                  <Td colSpan={6} textAlign="center" py={10}>
+                    <Text color="gray.500">No domains found</Text>
+                  </Td>
+                </Tr>
+              )}
+            </Tbody>
+          </Table>
+        </Box>
+      </VStack>
 
-      <Drawer isOpen={isFilterOpen} placement="right" onClose={onFilterClose}>
-        <DrawerOverlay />
-        <DrawerContent>
-          <DrawerCloseButton />
-          <DrawerHeader>Filter Domains</DrawerHeader>
-          <DrawerBody>
-            <VStack spacing={4} align="stretch">
-              <FormControl>
-                <FormLabel>Status</FormLabel>
-                <Select
-                  value={filters.status}
-                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                >
-                  <option value="">All</option>
-                  <option value="active">Active</option>
-                  <option value="expired">Expired</option>
-                  <option value="pending">Pending</option>
-                  <option value="suspended">Suspended</option>
-                </Select>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>Registrar</FormLabel>
-                <Select
-                  value={filters.registrar}
-                  onChange={(e) => setFilters(prev => ({ ...prev, registrar: e.target.value }))}
-                >
-                  <option value="">All</option>
-                  <option value="GoDaddy">GoDaddy</option>
-                  <option value="Namecheap">Namecheap</option>
-                  <option value="Google Domains">Google Domains</option>
-                </Select>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>Auto Renew</FormLabel>
-                <Select
-                  value={filters.autoRenew}
-                  onChange={(e) => setFilters(prev => ({ ...prev, autoRenew: e.target.value }))}
-                >
-                  <option value="">All</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </Select>
-              </FormControl>
-
-              <FormControl display="flex" alignItems="center">
-                <FormLabel mb="0">Expiring Soon</FormLabel>
-                <Switch
-                  isChecked={filters.expiringSoon}
-                  onChange={(e) => setFilters(prev => ({ ...prev, expiringSoon: e.target.checked }))}
-                />
-              </FormControl>
-            </VStack>
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
-
-      <DomainForm
-        isOpen={isOpen}
-        onClose={onClose}
-        onSubmit={handleSubmit}
-        domain={editingDomain}
-      />
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{selectedDomain ? 'Edit Domain' : 'Add New Domain'}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <DomainForm
+              domainId={selectedDomain?.id}
+              clientId={clientId}
+              onSuccess={handleFormSuccess}
+              onCancel={onClose}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };
 
-export default DomainList; 
+export default DomainList;

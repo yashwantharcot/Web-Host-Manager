@@ -1,18 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
-  Paper,
-  Typography,
-  Grid,
-  TextField,
   Button,
+  VStack,
+  HStack,
+  Heading,
+  Text,
+  SimpleGrid,
+  FormControl,
+  FormLabel,
+  Input,
   Switch,
-  FormControlLabel,
   Divider,
-  Alert,
-  Snackbar
-} from '@mui/material';
-import { authService } from '../../services/auth';
+  useToast,
+  Spinner,
+  Center,
+  Card,
+  CardHeader,
+  CardBody,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+} from '@chakra-ui/react';
+import { authService, settingsService } from '../../services/api';
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -34,46 +46,53 @@ const Settings = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+  const toast = useToast();
 
-  useEffect(() => {
-    loadSettings();
-    loadUser();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettingsAndUser = useCallback(async () => {
     try {
-      // TODO: Implement settings service
-      // const data = await settingsService.getSettings();
-      // setSettings(data);
+      setLoading(true);
+      const [currentUser, currentSettings] = await Promise.all([
+        authService.getCurrentUser(),
+        settingsService.getSettings().catch(() => null) // Fallback if settings API not implemented
+      ]);
+      
+      setUser(currentUser);
+      if (currentSettings) {
+        setSettings(currentSettings);
+      }
     } catch (error) {
-      console.error('Error loading settings:', error);
-      showSnackbar('Error loading settings', 'error');
+      console.error('Error loading settings/user:', error);
+      toast({
+        title: 'Error loading settings',
+        description: error.message,
+        status: 'error',
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const loadUser = async () => {
-    try {
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      console.error('Error loading user:', error);
-    }
-  };
+  useEffect(() => {
+    loadSettingsAndUser();
+  }, [loadSettingsAndUser]);
 
-  const handleSettingChange = (category, setting) => (event) => {
-    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+  const handleToggleChange = (category, setting) => (e) => {
+    const isChecked = e.target.checked;
     setSettings(prev => ({
       ...prev,
       [category]: {
         ...prev[category],
-        [setting]: value
+        [setting]: isChecked
+      }
+    }));
+  };
+
+  const handleNumberChange = (category, setting) => (valueString) => {
+    setSettings(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [setting]: parseInt(valueString) || 0
       }
     }));
   };
@@ -81,215 +100,135 @@ const Settings = () => {
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
-      // TODO: Implement settings service
-      // await settingsService.updateSettings(settings);
-      showSnackbar('Settings saved successfully', 'success');
+      await settingsService.updateSettings(settings);
+      toast({
+        title: 'Settings saved',
+        status: 'success',
+      });
     } catch (error) {
       console.error('Error saving settings:', error);
-      showSnackbar('Error saving settings', 'error');
+      toast({
+        title: 'Error saving settings',
+        description: error.message,
+        status: 'error',
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const showSnackbar = (message, severity = 'success') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity
-    });
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
-  };
-
   if (loading) {
-    return <Typography>Loading settings...</Typography>;
+    return (
+      <Center minH="400px">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
+    );
   }
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Settings
-      </Typography>
+      <VStack spacing={8} align="stretch">
+        <Heading size="lg">Settings</Heading>
 
-      <Grid container spacing={3}>
-        {/* User Profile Section */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              User Profile
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  value={user?.name || ''}
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  value={user?.email || ''}
-                  disabled
-                />
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+        <Card variant="outline" bg="white">
+          <CardHeader>
+            <Heading size="md">User Profile</Heading>
+          </CardHeader>
+          <CardBody>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+              <FormControl isReadOnly>
+                <FormLabel>Name</FormLabel>
+                <Input value={user?.name || ''} />
+              </FormControl>
+              <FormControl isReadOnly>
+                <FormLabel>Email</FormLabel>
+                <Input value={user?.email || ''} />
+              </FormControl>
+              <FormControl isReadOnly>
+                <FormLabel>Username</FormLabel>
+                <Input value={user?.username || ''} />
+              </FormControl>
+              <FormControl isReadOnly>
+                <FormLabel>Role</FormLabel>
+                <Input value={user?.role || ''} />
+              </FormControl>
+            </SimpleGrid>
+          </CardBody>
+        </Card>
 
-        {/* Notifications Section */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Notifications
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.notifications.email}
-                      onChange={handleSettingChange('notifications', 'email')}
-                    />
-                  }
-                  label="Email Notifications"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.notifications.browser}
-                      onChange={handleSettingChange('notifications', 'browser')}
-                    />
-                  }
-                  label="Browser Notifications"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.notifications.renewalReminders}
-                      onChange={handleSettingChange('notifications', 'renewalReminders')}
-                    />
-                  }
-                  label="Renewal Reminders"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.notifications.expiryWarnings}
-                      onChange={handleSettingChange('notifications', 'expiryWarnings')}
-                    />
-                  }
-                  label="Expiry Warnings"
-                />
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+        <Card variant="outline" bg="white">
+          <CardHeader>
+            <Heading size="md">Notifications</Heading>
+          </CardHeader>
+          <CardBody>
+            <VStack align="stretch" spacing={4}>
+              <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                <FormLabel mb="0">Email Notifications</FormLabel>
+                <Switch isChecked={settings.notifications.email} onChange={handleToggleChange('notifications', 'email')} />
+              </FormControl>
+              <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                <FormLabel mb="0">Browser Notifications</FormLabel>
+                <Switch isChecked={settings.notifications.browser} onChange={handleToggleChange('notifications', 'browser')} />
+              </FormControl>
+              <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                <FormLabel mb="0">Renewal Reminders</FormLabel>
+                <Switch isChecked={settings.notifications.renewalReminders} onChange={handleToggleChange('notifications', 'renewalReminders')} />
+              </FormControl>
+              <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                <FormLabel mb="0">Expiry Warnings</FormLabel>
+                <Switch isChecked={settings.notifications.expiryWarnings} onChange={handleToggleChange('notifications', 'expiryWarnings')} />
+              </FormControl>
+            </VStack>
+          </CardBody>
+        </Card>
 
-        {/* Display Settings Section */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Display Settings
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.display.darkMode}
-                      onChange={handleSettingChange('display', 'darkMode')}
-                    />
-                  }
-                  label="Dark Mode"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.display.compactMode}
-                      onChange={handleSettingChange('display', 'compactMode')}
-                    />
-                  }
-                  label="Compact Mode"
-                />
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+        <Card variant="outline" bg="white">
+          <CardHeader>
+            <Heading size="md">Display & Security</Heading>
+          </CardHeader>
+          <CardBody>
+            <VStack align="stretch" spacing={6}>
+              <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                <FormLabel mb="0">Dark Mode</FormLabel>
+                <Switch isChecked={settings.display.darkMode} onChange={handleToggleChange('display', 'darkMode')} />
+              </FormControl>
+              <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                <FormLabel mb="0">Compact Mode</FormLabel>
+                <Switch isChecked={settings.display.compactMode} onChange={handleToggleChange('display', 'compactMode')} />
+              </FormControl>
+              <Divider />
+              <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                <FormLabel mb="0">Two-Factor Authentication</FormLabel>
+                <Switch isChecked={settings.security.twoFactorAuth} onChange={handleToggleChange('security', 'twoFactorAuth')} />
+              </FormControl>
+              <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                <FormLabel mb="0">Session Timeout (minutes)</FormLabel>
+                <NumberInput 
+                  maxW="100px" 
+                  min={5} 
+                  max={1440} 
+                  value={settings.security.sessionTimeout} 
+                  onChange={handleNumberChange('security', 'sessionTimeout')}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+            </VStack>
+          </CardBody>
+        </Card>
 
-        {/* Security Settings Section */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Security Settings
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.security.twoFactorAuth}
-                      onChange={handleSettingChange('security', 'twoFactorAuth')}
-                    />
-                  }
-                  label="Two-Factor Authentication"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Session Timeout (minutes)"
-                  value={settings.security.sessionTimeout}
-                  onChange={handleSettingChange('security', 'sessionTimeout')}
-                />
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-
-        {/* Save Button */}
-        <Grid item xs={12}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              onClick={handleSaveSettings}
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save Settings'}
-            </Button>
-          </Box>
-        </Grid>
-      </Grid>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        <Box display="flex" justifyContent="flex-end">
+          <Button colorScheme="blue" size="lg" isLoading={saving} onClick={handleSaveSettings}>
+            Save All Settings
+          </Button>
+        </Box>
+      </VStack>
     </Box>
   );
 };
 
-export default Settings; 
+export default Settings;

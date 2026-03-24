@@ -1,214 +1,159 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
-  Paper,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  Dialog,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  useToast,
   IconButton,
-  Tooltip,
-  Alert,
-  CircularProgress,
-  Snackbar
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon
-} from '@mui/icons-material';
+  HStack,
+  VStack,
+  Text,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  Spinner,
+  Center,
+} from '@chakra-ui/react';
+import { EditIcon, DeleteIcon, AddIcon } from '@chakra-ui/icons';
 import { clientService } from '../../services/api';
 import ClientForm from './ClientForm';
 
 const ClientList = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [openForm, setOpenForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
 
-  useEffect(() => {
-    loadClients();
-  }, []);
-
-  const loadClients = async () => {
+  const fetchClients = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
       const data = await clientService.getAllClients();
-      setClients(data);
-    } catch (err) {
-      setError('Failed to load clients. Please try again.');
-      console.error('Error loading clients:', err);
+      setClients(data || []);
+    } catch (error) {
+      toast({
+        title: 'Error fetching clients',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddClient = async (clientData) => {
-    try {
-      await clientService.addClient(clientData);
-      loadClients();
-      setOpenForm(false);
-      showSnackbar('Client added successfully');
-    } catch (err) {
-      showSnackbar(err.response?.data?.error || 'Failed to add client', 'error');
-    }
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const handleEdit = (client) => {
+    setSelectedClient(client);
+    onOpen();
   };
 
-  const handleUpdateClient = async (clientData) => {
-    try {
-      await clientService.updateClient(selectedClient.id, clientData);
-      loadClients();
-      setOpenForm(false);
-      setSelectedClient(null);
-      showSnackbar('Client updated successfully');
-    } catch (err) {
-      showSnackbar(err.response?.data?.error || 'Failed to update client', 'error');
-    }
-  };
-
-  const handleDeleteClient = async (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this client?')) {
       try {
         await clientService.deleteClient(id);
-        loadClients();
-        showSnackbar('Client deleted successfully');
-      } catch (err) {
-        showSnackbar(err.response?.data?.error || 'Failed to delete client', 'error');
+        toast({ title: 'Client deleted', status: 'success' });
+        fetchClients();
+      } catch (error) {
+        toast({ title: 'Error deleting client', description: error.message, status: 'error' });
       }
     }
   };
 
-  const handleEditClient = (client) => {
-    setSelectedClient(client);
-    setOpenForm(true);
-  };
-
-  const showSnackbar = (message, severity = 'success') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity
-    });
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
+  const handleFormSuccess = () => {
+    onClose();
+    fetchClients();
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress />
-      </Box>
+      <Center height="200px">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
     );
   }
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Clients</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setSelectedClient(null);
-            setOpenForm(true);
-          }}
-        >
-          Add Client
-        </Button>
-      </Box>
+      <VStack spacing={6} align="stretch">
+        <HStack justifyContent="space-between">
+          <Text fontSize="2xl" fontWeight="bold">Clients</Text>
+          <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={() => { setSelectedClient(null); onOpen(); }}>
+            Add Client
+          </Button>
+        </HStack>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+        <Box overflowX="auto" borderWidth="1px" borderRadius="lg" bg="white">
+          <Table variant="simple">
+            <Thead bg="gray.50">
+              <Tr>
+                <Th>Name</Th>
+                <Th>Company</Th>
+                <Th>Email</Th>
+                <Th>Phone</Th>
+                <Th>Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {clients.map((client) => (
+                <Tr key={client.id} _hover={{ bg: 'gray.50' }}>
+                  <Td fontWeight="medium">{client.name}</Td>
+                  <Td>{client.company}</Td>
+                  <Td>{client.email}</Td>
+                  <Td>{client.phone || 'N/A'}</Td>
+                  <Td>
+                    <HStack spacing={2}>
+                      <IconButton size="sm" icon={<EditIcon />} onClick={() => handleEdit(client)} aria-label="Edit client" />
+                      <IconButton size="sm" icon={<DeleteIcon />} colorScheme="red" onClick={() => handleDelete(client.id)} aria-label="Delete client" />
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+              {clients.length === 0 && (
+                <Tr>
+                  <Td colSpan={5} textAlign="center" py={10}>
+                    <VStack spacing={2}>
+                      <Text color="gray.500">No clients found</Text>
+                      <Button size="sm" variant="ghost" colorScheme="blue" onClick={onOpen}>Add your first client</Button>
+                    </VStack>
+                  </Td>
+                </Tr>
+              )}
+            </Tbody>
+          </Table>
+        </Box>
+      </VStack>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Company</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {clients.map((client) => (
-              <TableRow key={client.id}>
-                <TableCell>{client.name}</TableCell>
-                <TableCell>{client.company}</TableCell>
-                <TableCell>{client.email}</TableCell>
-                <TableCell>{client.phone}</TableCell>
-                <TableCell>
-                  <Tooltip title="Edit">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEditClient(client)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClient(client.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Dialog
-        open={openForm}
-        onClose={() => {
-          setOpenForm(false);
-          setSelectedClient(null);
-        }}
-        maxWidth="md"
-        fullWidth
-      >
-        <ClientForm
-          onSubmit={selectedClient ? handleUpdateClient : handleAddClient}
-          initialData={selectedClient}
-        />
-      </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{selectedClient ? 'Edit Client' : 'Add New Client'}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <ClientForm
+              clientId={selectedClient?.id}
+              initialData={selectedClient}
+              onSuccess={handleFormSuccess}
+              onCancel={onClose}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };
 
-export default ClientList; 
+export default ClientList;

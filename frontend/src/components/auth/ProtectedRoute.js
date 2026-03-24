@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { Box, CircularProgress } from '@mui/material';
-import { authService } from '../../services/auth';
+import { Center, Spinner } from '@chakra-ui/react';
+import { authService } from '../../services/api';
+
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const [loading, setLoading] = useState(true);
@@ -34,14 +35,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
-        <CircularProgress />
-      </Box>
+      <Center minHeight="100vh">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
     );
   }
 
@@ -52,4 +48,5 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   return children;
 };
 
-export default ProtectedRoute; 
+export default ProtectedRoute;
+ 

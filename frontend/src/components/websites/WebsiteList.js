@@ -2,186 +2,190 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
-  Paper,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  Dialog,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  useToast,
   IconButton,
+  Badge,
+  HStack,
+  VStack,
+  Text,
+  Heading,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
   Tooltip,
-  Chip
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Launch as LaunchIcon
-} from '@mui/icons-material';
+  Spinner,
+  Center,
+} from '@chakra-ui/react';
+import { EditIcon, DeleteIcon, AddIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import { websiteService } from '../../services/api';
 import WebsiteForm from './WebsiteForm';
 
-const WebsiteList = () => {
-  const [websites, setWebsites] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [openForm, setOpenForm] = useState(false);
+const WebsiteList = ({ clientId, websites: initialWebsites, onUpdate }) => {
+  const [websites, setWebsites] = useState(initialWebsites || []);
+  const [loading, setLoading] = useState(!initialWebsites);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedWebsite, setSelectedWebsite] = useState(null);
+  const toast = useToast();
 
-  useEffect(() => {
-    loadWebsites();
-  }, []);
-
-  const loadWebsites = async () => {
+  const fetchWebsites = async () => {
+    if (initialWebsites && !clientId) return; // Use initial data if provided and no clientId
+    
+    setLoading(true);
     try {
-      const data = await websiteService.getAllWebsites();
-      setWebsites(data);
+      const data = clientId 
+        ? await websiteService.getWebsitesByClient(clientId)
+        : await websiteService.getAllWebsites();
+      setWebsites(data || []);
     } catch (error) {
-      console.error('Error loading websites:', error);
+      toast({
+        title: 'Error fetching websites',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddWebsite = async (websiteData) => {
-    try {
-      await websiteService.addWebsite(websiteData);
-      loadWebsites();
-      setOpenForm(false);
-    } catch (error) {
-      console.error('Error adding website:', error);
+  useEffect(() => {
+    if (!initialWebsites || clientId) {
+      fetchWebsites();
     }
+  }, [clientId, initialWebsites]);
+
+  const handleEdit = (website) => {
+    setSelectedWebsite(website);
+    onOpen();
   };
 
-  const handleUpdateWebsite = async (websiteData) => {
-    try {
-      await websiteService.updateWebsite(selectedWebsite.id, websiteData);
-      loadWebsites();
-      setOpenForm(false);
-      setSelectedWebsite(null);
-    } catch (error) {
-      console.error('Error updating website:', error);
-    }
-  };
-
-  const handleDeleteWebsite = async (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this website?')) {
       try {
         await websiteService.deleteWebsite(id);
-        loadWebsites();
+        toast({ title: 'Website deleted', status: 'success' });
+        if (onUpdate) onUpdate();
+        fetchWebsites();
       } catch (error) {
-        console.error('Error deleting website:', error);
+        toast({ title: 'Error deleting website', description: error.message, status: 'error' });
       }
     }
   };
 
-  const handleEditWebsite = (website) => {
-    setSelectedWebsite(website);
-    setOpenForm(true);
+  const handleFormSuccess = () => {
+    onClose();
+    if (onUpdate) onUpdate();
+    fetchWebsites();
   };
 
   const handleOpenWebsite = (url) => {
-    window.open(url, '_blank');
+    if (!url) return;
+    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+    window.open(fullUrl, '_blank');
   };
+
+  if (loading) {
+    return (
+      <Center height="200px">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
+    );
+  }
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Websites</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setSelectedWebsite(null);
-            setOpenForm(true);
-          }}
-        >
-          Add Website
-        </Button>
-      </Box>
+      <VStack spacing={6} align="stretch">
+        <HStack justifyContent="space-between">
+          <Text fontSize="2xl" fontWeight="bold">Websites</Text>
+          <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={() => { setSelectedWebsite(null); onOpen(); }}>
+            Add Website
+          </Button>
+        </HStack>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>URL</TableCell>
-              <TableCell>Client</TableCell>
-              <TableCell>Hosting Provider</TableCell>
-              <TableCell>Expiry Date</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {websites.map((website) => (
-              <TableRow key={website.id}>
-                <TableCell>{website.name}</TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    {website.url}
-                    <Tooltip title="Open website">
+        <Box overflowX="auto" borderWidth="1px" borderRadius="lg" bg="white">
+          <Table variant="simple">
+            <Thead bg="gray.50">
+              <Tr>
+                <Th>Name</Th>
+                <Th>URL</Th>
+                <Th>Hosting</Th>
+                <Th>Expiry</Th>
+                <Th>Status</Th>
+                <Th>Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {websites.map((website) => (
+                <Tr key={website.id} _hover={{ bg: 'gray.50' }}>
+                  <Td fontWeight="medium">{website.name}</Td>
+                  <Td>
+                    <HStack spacing={2}>
+                      <Text isTruncated maxW="200px">{website.url}</Text>
                       <IconButton
-                        size="small"
+                        size="xs"
+                        icon={<ExternalLinkIcon />}
                         onClick={() => handleOpenWebsite(website.url)}
-                      >
-                        <LaunchIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </TableCell>
-                <TableCell>{website.clientName}</TableCell>
-                <TableCell>{website.hostingProvider}</TableCell>
-                <TableCell>{new Date(website.expiryDate).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={website.status}
-                    color={website.status === 'Active' ? 'success' : 'error'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Tooltip title="Edit">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEditWebsite(website)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteWebsite(website.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                        aria-label="Open website"
+                        variant="ghost"
+                      />
+                    </HStack>
+                  </Td>
+                  <Td>{website.hostingProvider || 'N/A'}</Td>
+                  <Td>{website.expiryDate ? new Date(website.expiryDate).toLocaleDateString() : 'N/A'}</Td>
+                  <Td>
+                    <Badge colorScheme={website.status === 'Active' ? 'green' : 'red'}>
+                      {website.status}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <HStack spacing={2}>
+                      <IconButton size="sm" icon={<EditIcon />} onClick={() => handleEdit(website)} aria-label="Edit website" />
+                      <IconButton size="sm" icon={<DeleteIcon />} colorScheme="red" onClick={() => handleDelete(website.id)} aria-label="Delete website" />
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+              {websites.length === 0 && (
+                <Tr>
+                  <Td colSpan={6} textAlign="center" py={10}>
+                    <Text color="gray.500">No websites found</Text>
+                  </Td>
+                </Tr>
+              )}
+            </Tbody>
+          </Table>
+        </Box>
+      </VStack>
 
-      <Dialog
-        open={openForm}
-        onClose={() => {
-          setOpenForm(false);
-          setSelectedWebsite(null);
-        }}
-        maxWidth="md"
-        fullWidth
-      >
-        <WebsiteForm
-          onSubmit={selectedWebsite ? handleUpdateWebsite : handleAddWebsite}
-          initialData={selectedWebsite}
-        />
-      </Dialog>
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{selectedWebsite ? 'Edit Website' : 'Add New Website'}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <WebsiteForm
+              websiteId={selectedWebsite?.id}
+              clientId={clientId}
+              initialData={selectedWebsite}
+              onSuccess={handleFormSuccess}
+              onCancel={onClose}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };
 
-export default WebsiteList; 
+export default WebsiteList;

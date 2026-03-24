@@ -1,16 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
-  Typography,
   Button,
-  Dialog,
-  Paper,
   Grid,
-  CircularProgress,
-  Alert
-} from '@mui/material';
-import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+  GridItem,
+  Heading,
+  Text,
+  VStack,
+  HStack,
+  Divider,
+  useToast,
+  Spinner,
+  Center,
+  IconButton,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+} from '@chakra-ui/react';
+import { ArrowBackIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { clientService } from '../../services/api';
 import ClientForm from './ClientForm';
 import WebsiteList from '../websites/WebsiteList';
@@ -22,210 +34,169 @@ const ClientDetails = () => {
   const navigate = useNavigate();
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openForm, setOpenForm] = useState(false);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
 
-  useEffect(() => {
-    loadClient();
-  }, [id]);
-
-  const loadClient = async () => {
+  const loadClient = useCallback(async () => {
     try {
       setLoading(true);
       const data = await clientService.getClient(id);
       setClient(data);
-      setError(null);
     } catch (err) {
-      setError('Failed to load client details');
+      toast({
+        title: 'Error loading client',
+        description: err.message,
+        status: 'error',
+      });
       console.error('Error loading client:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, toast]);
 
-  const handleUpdateClient = async (clientData) => {
-    try {
-      await clientService.updateClient(id, clientData);
-      setOpenForm(false);
-      loadClient();
-    } catch (error) {
-      console.error('Error updating client:', error);
-    }
+  useEffect(() => {
+    loadClient();
+  }, [loadClient]);
+
+  const handleUpdateClient = () => {
+    onClose();
+    loadClient();
   };
 
   const handleDeleteClient = async () => {
-    if (window.confirm('Are you sure you want to delete this client?')) {
+    if (window.confirm('Are you sure you want to delete this client? This will delete all associated websites, domains, and email accounts.')) {
       try {
         await clientService.deleteClient(id);
+        toast({ title: 'Client deleted', status: 'success' });
         navigate('/clients');
       } catch (error) {
-        console.error('Error deleting client:', error);
+        toast({ title: 'Error deleting client', description: error.message, status: 'error' });
       }
     }
   };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box p={3}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
+      <Center minH="400px">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
     );
   }
 
   if (!client) {
     return (
-      <Box p={3}>
-        <Alert severity="warning">Client not found</Alert>
-      </Box>
+      <Center minH="400px">
+        <VStack spacing={4}>
+          <Text fontSize="xl">Client not found</Text>
+          <Button onClick={() => navigate('/clients')}>Back to Clients</Button>
+        </VStack>
+      </Center>
     );
   }
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate('/clients')}
-          >
-            Back to Clients
-          </Button>
-          <Typography variant="h5" component="h1">
-            Client Details
-          </Typography>
-        </Box>
+      <VStack spacing={8} align="stretch">
+        <HStack justifyContent="space-between" wrap="wrap" spacing={4}>
+          <HStack spacing={4}>
+            <IconButton
+              icon={<ArrowBackIcon />}
+              onClick={() => navigate('/clients')}
+              variant="ghost"
+              aria-label="Back to clients"
+            />
+            <VStack align="flex-start" spacing={0}>
+              <Heading size="lg">{client.name}</Heading>
+              <Text color="gray.500">{client.company}</Text>
+            </VStack>
+          </HStack>
+          <HStack spacing={3}>
+            <Button leftIcon={<EditIcon />} colorScheme="blue" onClick={onOpen}>
+              Edit Client
+            </Button>
+            <Button leftIcon={<DeleteIcon />} colorScheme="red" variant="outline" onClick={handleDeleteClient}>
+              Delete
+            </Button>
+          </HStack>
+        </HStack>
+
+        <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={8}>
+          <GridItem>
+            <Box p={6} borderWidth="1px" borderRadius="lg" bg="white" shadow="sm">
+              <Heading size="md" mb={4}>Contact Information</Heading>
+              <VStack align="stretch" spacing={3}>
+                <HStack>
+                  <Text fontWeight="bold" minW="100px">Email:</Text>
+                  <Text>{client.email}</Text>
+                </HStack>
+                <HStack>
+                  <Text fontWeight="bold" minW="100px">Phone:</Text>
+                  <Text>{client.phone || 'N/A'}</Text>
+                </HStack>
+                <HStack align="flex-start">
+                  <Text fontWeight="bold" minW="100px">Address:</Text>
+                  <Text>{client.address || 'N/A'}</Text>
+                </HStack>
+              </VStack>
+            </Box>
+          </GridItem>
+          <GridItem>
+            <Box p={6} borderWidth="1px" borderRadius="lg" bg="white" shadow="sm">
+              <Heading size="md" mb={4}>Client Stats</Heading>
+              <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                <VStack p={4} bg="blue.50" borderRadius="md" align="center">
+                  <Text fontWeight="bold" fontSize="2xl">{client.Websites?.length || 0}</Text>
+                  <Text fontSize="sm">Websites</Text>
+                </VStack>
+                <VStack p={4} bg="green.50" borderRadius="md" align="center">
+                  <Text fontWeight="bold" fontSize="2xl">{client.Domains?.length || 0}</Text>
+                  <Text fontSize="sm">Domains</Text>
+                </VStack>
+                <VStack p={4} bg="purple.50" borderRadius="md" align="center" gridColumn="span 2">
+                  <Text fontWeight="bold" fontSize="2xl">{client.EmailAccounts?.length || 0}</Text>
+                  <Text fontSize="sm">Email Accounts</Text>
+                </VStack>
+              </Grid>
+            </Box>
+          </GridItem>
+        </Grid>
+
+        <Divider />
+
         <Box>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setOpenForm(true)}
-            sx={{ mr: 1 }}
-          >
-            Edit Client
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={handleDeleteClient}
-          >
-            Delete Client
-          </Button>
+          <WebsiteList clientId={id} websites={client.Websites} onUpdate={loadClient} />
         </Box>
-      </Box>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Contact Information
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Name
-                </Typography>
-                <Typography>{client.name}</Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Email
-                </Typography>
-                <Typography>{client.email}</Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Phone
-                </Typography>
-                <Typography>{client.phone}</Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Address
-                </Typography>
-                <Typography>{client.address}</Typography>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+        <Divider />
 
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Additional Information
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Notes
-                </Typography>
-                <Typography>{client.notes || 'No notes available'}</Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Created At
-                </Typography>
-                <Typography>
-                  {new Date(client.createdAt).toLocaleDateString()}
-                </Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Last Updated
-                </Typography>
-                <Typography>
-                  {new Date(client.updatedAt).toLocaleDateString()}
-                </Typography>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+        <Box>
+          <DomainList clientId={id} domains={client.Domains} onUpdate={loadClient} />
+        </Box>
 
-        <Grid item xs={12}>
-          <WebsiteList
-            clientId={id}
-            websites={client.websites || []}
-            onUpdate={loadClient}
-          />
-        </Grid>
+        <Divider />
 
-        <Grid item xs={12}>
-          <DomainList
-            clientId={id}
-            domains={client.domains || []}
-            onUpdate={loadClient}
-          />
-        </Grid>
+        <Box>
+          <EmailList clientId={id} emailAccounts={client.EmailAccounts} onUpdate={loadClient} />
+        </Box>
+      </VStack>
 
-        <Grid item xs={12}>
-          <EmailList
-            clientId={id}
-            emailAccounts={client.emailAccounts || []}
-            onUpdate={loadClient}
-          />
-        </Grid>
-      </Grid>
-
-      <Dialog
-        open={openForm}
-        onClose={() => setOpenForm(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <ClientForm
-          onSubmit={handleUpdateClient}
-          initialData={client}
-        />
-      </Dialog>
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Edit Client</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <ClientForm
+              clientId={id}
+              initialData={client}
+              onSuccess={handleUpdateClient}
+              onCancel={onClose}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };
 
-export default ClientDetails; 
+export default ClientDetails;

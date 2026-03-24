@@ -25,7 +25,6 @@ api.interceptors.response.use(
     if (response.data && response.data.status === 'success' && response.data.data) {
       const data = response.data.data;
       // If data has only one key and it's an array or object, return that value
-      // This helps with endpoints that return { data: { clients: [...] } }
       const keys = Object.keys(data);
       if (keys.length === 1) {
         return data[keys[0]];
@@ -37,7 +36,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -47,6 +49,20 @@ api.interceptors.response.use(
 export const authService = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
+  getCurrentUser: async () => {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  },
+  isAdmin: () => {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return false;
+    try {
+      const user = JSON.parse(userStr);
+      return user.role === 'admin';
+    } catch (e) {
+      return false;
+    }
+  },
 };
 
 // Client Service
@@ -65,6 +81,7 @@ export const websiteService = {
   createWebsite: (data) => api.post('/websites', data),
   updateWebsite: (id, data) => api.put(`/websites/${id}`, data),
   deleteWebsite: (id) => api.delete(`/websites/${id}`),
+  getWebsitesByClient: (clientId) => api.get(`/clients/${clientId}/websites`),
 };
 
 // Domain Service
@@ -74,10 +91,17 @@ export const domainService = {
   createDomain: (data) => api.post('/domains', data),
   updateDomain: (id, data) => api.put(`/domains/${id}`, data),
   deleteDomain: (id) => api.delete(`/domains/${id}`),
+  getDomainsByClient: (clientId) => api.get(`/domains/client/${clientId}`),
 };
 
 // Email Service
 export const emailService = {
+  getAllEmails: () => api.get('/emails'),
+  getEmail: (id) => api.get(`/emails/${id}`),
+  createEmail: (data) => api.post('/emails', data),
+  updateEmail: (id, data) => api.put(`/emails/${id}`, data),
+  deleteEmail: (id) => api.delete(`/emails/${id}`),
+  getEmailsByClient: (clientId) => api.get(`/clients/${clientId}/emails`),
   sendNotification: (data) => api.post('/email/notify', data),
 };
 
@@ -87,4 +111,4 @@ export const settingsService = {
   updateSettings: (data) => api.put('/settings', data),
 };
 
-export default api; 
+export default api;

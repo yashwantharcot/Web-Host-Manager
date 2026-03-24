@@ -1,176 +1,196 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Typography,
   Button,
-  Dialog,
-  Paper,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  useToast,
   IconButton,
-  Chip,
-  Tooltip
-} from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Email as EmailIcon } from '@mui/icons-material';
+  Badge,
+  HStack,
+  VStack,
+  Text,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  Spinner,
+  Center,
+} from '@chakra-ui/react';
+import { EditIcon, DeleteIcon, AddIcon, EmailIcon } from '@chakra-ui/icons';
 import { emailService } from '../../services/api';
 import EmailForm from './EmailForm';
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'active':
-      return 'success';
-    case 'suspended':
-      return 'warning';
-    case 'expired':
-      return 'error';
-    case 'cancelled':
-      return 'default';
-    default:
-      return 'default';
-  }
-};
-
-const EmailList = ({ clientId, emailAccounts, onUpdate }) => {
-  const [openForm, setOpenForm] = useState(false);
+const EmailList = ({ clientId, emailAccounts: initialEmails, onUpdate }) => {
+  const [emails, setEmails] = useState(initialEmails || []);
+  const [loading, setLoading] = useState(!initialEmails);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedEmail, setSelectedEmail] = useState(null);
+  const toast = useToast();
 
-  const handleAddEmail = async (emailData) => {
+  const fetchEmails = async () => {
+    if (initialEmails && !clientId) return;
+    
+    setLoading(true);
     try {
-      await emailService.addEmailAccount(clientId, emailData);
-      setOpenForm(false);
-      onUpdate();
+      const data = clientId 
+        ? await emailService.getEmailAccountsByClient(clientId)
+        : await emailService.getAllEmailAccounts();
+      setEmails(data || []);
     } catch (error) {
-      console.error('Error adding email account:', error);
+      toast({
+        title: 'Error fetching email accounts',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdateEmail = async (emailData) => {
-    try {
-      await emailService.updateEmailAccount(clientId, selectedEmail.id, emailData);
-      setOpenForm(false);
-      setSelectedEmail(null);
-      onUpdate();
-    } catch (error) {
-      console.error('Error updating email account:', error);
+  useEffect(() => {
+    if (!initialEmails || clientId) {
+      fetchEmails();
     }
+  }, [clientId, initialEmails]);
+
+  const handleEdit = (email) => {
+    setSelectedEmail(email);
+    onOpen();
   };
 
-  const handleDeleteEmail = async (emailId) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this email account?')) {
       try {
-        await emailService.deleteEmailAccount(clientId, emailId);
-        onUpdate();
+        await emailService.deleteEmailAccount(id);
+        toast({ title: 'Email account deleted', status: 'success' });
+        if (onUpdate) onUpdate();
+        fetchEmails();
       } catch (error) {
-        console.error('Error deleting email account:', error);
+        toast({ title: 'Error deleting email account', description: error.message, status: 'error' });
       }
     }
   };
 
-  const handleEditClick = (email) => {
-    setSelectedEmail(email);
-    setOpenForm(true);
+  const handleFormSuccess = () => {
+    onClose();
+    if (onUpdate) onUpdate();
+    fetchEmails();
   };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return 'green';
+      case 'suspended':
+        return 'yellow';
+      case 'expired':
+        return 'red';
+      case 'cancelled':
+        return 'gray';
+      default:
+        return 'gray';
+    }
+  };
+
+  if (loading) {
+    return (
+      <Center height="200px">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
+    );
+  }
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h6" component="h2">
-          Email Accounts
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setSelectedEmail(null);
-            setOpenForm(true);
-          }}
-        >
-          Add Email Account
-        </Button>
-      </Box>
+      <VStack spacing={6} align="stretch">
+        <HStack justifyContent="space-between">
+          <Text fontSize="2xl" fontWeight="bold">Email Accounts</Text>
+          <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={() => { setSelectedEmail(null); onOpen(); }}>
+            Add Account
+          </Button>
+        </HStack>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Email Address</TableCell>
-              <TableCell>Hosting Provider</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Quota</TableCell>
-              <TableCell>Auto Renew</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {emailAccounts.map((email) => (
-              <TableRow key={email.id}>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <EmailIcon fontSize="small" />
-                    {email.email}
-                  </Box>
-                </TableCell>
-                <TableCell>{email.hostingProvider}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={email.status}
-                    color={getStatusColor(email.status)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{email.quota} MB</TableCell>
-                <TableCell>
-                  <Chip
-                    label={email.autoRenew ? 'Yes' : 'No'}
-                    color={email.autoRenew ? 'success' : 'default'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Tooltip title="Edit">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEditClick(email)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteEmail(email.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+        <Box overflowX="auto" borderWidth="1px" borderRadius="lg" bg="white">
+          <Table variant="simple">
+            <Thead bg="gray.50">
+              <Tr>
+                <Th>Email Address</Th>
+                <Th>Hosting</Th>
+                <Th>Quota</Th>
+                <Th>Auto Renew</Th>
+                <Th>Status</Th>
+                <Th>Actions</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {emails.map((email) => (
+                <Tr key={email.id} _hover={{ bg: 'gray.50' }}>
+                  <Td fontWeight="medium">
+                    <HStack spacing={2}>
+                      <EmailIcon color="gray.400" />
+                      <Text>{email.email}</Text>
+                    </HStack>
+                  </Td>
+                  <Td>{email.hostingProvider || 'N/A'}</Td>
+                  <Td>{email.quota ? `${email.quota} MB` : 'N/A'}</Td>
+                  <Td>
+                    <Badge colorScheme={email.autoRenew ? 'green' : 'gray'}>
+                      {email.autoRenew ? 'Yes' : 'No'}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <Badge colorScheme={getStatusColor(email.status)}>
+                      {email.status}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <HStack spacing={2}>
+                      <IconButton size="sm" icon={<EditIcon />} onClick={() => handleEdit(email)} aria-label="Edit email" />
+                      <IconButton size="sm" icon={<DeleteIcon />} colorScheme="red" onClick={() => handleDelete(email.id)} aria-label="Delete email" />
+                    </HStack>
+                  </Td>
+                </Tr>
+              ))}
+              {emails.length === 0 && (
+                <Tr>
+                  <Td colSpan={6} textAlign="center" py={10}>
+                    <Text color="gray.500">No email accounts found</Text>
+                  </Td>
+                </Tr>
+              )}
+            </Tbody>
+          </Table>
+        </Box>
+      </VStack>
 
-      <Dialog 
-        open={openForm} 
-        onClose={() => {
-          setOpenForm(false);
-          setSelectedEmail(null);
-        }}
-        maxWidth="md"
-        fullWidth
-      >
-        <EmailForm 
-          onSubmit={selectedEmail ? handleUpdateEmail : handleAddEmail}
-          initialData={selectedEmail}
-        />
-      </Dialog>
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{selectedEmail ? 'Edit Account' : 'Add New Account'}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <EmailForm
+              emailId={selectedEmail?.id}
+              clientId={clientId}
+              initialData={selectedEmail}
+              onSuccess={handleFormSuccess}
+              onCancel={onClose}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };
 
-export default EmailList; 
+export default EmailList;

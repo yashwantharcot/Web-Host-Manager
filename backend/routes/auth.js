@@ -35,7 +35,7 @@ router.post('/register', createValidator(userSchemas.register), async (req, res,
     const token = jwt.sign(
       { id: user.id },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRATION }
+      { expiresIn: process.env.JWT_EXPIRATION || '1d' }
     );
 
     res.status(201).json({
@@ -91,7 +91,7 @@ router.post('/login', createValidator(userSchemas.login), async (req, res, next)
     const token = jwt.sign(
       { id: user.id },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRATION }
+      { expiresIn: process.env.JWT_EXPIRATION || '1d' }
     );
 
     res.json({

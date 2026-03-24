@@ -44,7 +44,7 @@ function sanitizeMongoUri(uri) {
   return `${prefix}${user}:${encodedPass}@${hostAndPath}`;
 }
 
-const MONGO_URI = sanitizeMongoUri(rawMongoUri) || 'mongodb://localhost:27017/webhost_manager';
+const MONGO_URI = rawMongoUri ? (rawMongoUri.startsWith('mongodb+srv') ? rawMongoUri : sanitizeMongoUri(rawMongoUri)) : 'mongodb://localhost:27017/webhost_manager';
 
 const connect = async () => {
   try {

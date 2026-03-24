@@ -13,11 +13,9 @@ import {
   Grid,
   GridItem,
 } from '@chakra-ui/react';
-import domainService from '../../services/domainService';
-import clientService from '../../services/clientService';
-import websiteService from '../../services/websiteService';
+import { domainService, clientService, websiteService } from '../../services/api';
 
-const DomainForm = ({ domainId, onSuccess, onCancel }) => {
+const DomainForm = ({ domainId, clientId, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
     registrar: '',
@@ -28,7 +26,7 @@ const DomainForm = ({ domainId, onSuccess, onCancel }) => {
     status: 'active',
     dnsRecords: '',
     notes: '',
-    clientId: '',
+    clientId: clientId || '',
     websiteId: '',
   });
 
@@ -186,8 +184,8 @@ const DomainForm = ({ domainId, onSuccess, onCancel }) => {
           </GridItem>
 
           <GridItem>
-            <FormControl>
-              <FormLabel>Auto Renew</FormLabel>
+            <FormControl display="flex" alignItems="center">
+              <FormLabel mb="0">Auto Renew</FormLabel>
               <Switch
                 name="autoRenew"
                 isChecked={formData.autoRenew}
@@ -301,4 +299,4 @@ const DomainForm = ({ domainId, onSuccess, onCancel }) => {
   );
 };
 
-export default DomainForm; 
+export default DomainForm;

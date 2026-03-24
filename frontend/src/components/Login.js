@@ -14,7 +14,8 @@ import {
   Container,
   useColorModeValue,
 } from '@chakra-ui/react';
-import api from '../services/api';
+import { authService } from '../services/api';
+
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -27,11 +28,11 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const data = await api.post('/auth/login', { username, password });
+      const data = await authService.login({ username, password });
       if (data && data.token) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        navigate('/clients');
+        navigate('/dashboard');
       } else {
         alert('Login failed: Invalid response from server');
       }

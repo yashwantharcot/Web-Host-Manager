@@ -12,16 +12,36 @@ const db = {};
 
 // Helper: convert a Sequelize-style `where` object to a mongoose filter.
 function whereToFilter(where = {}) {
+  if (!where) return {};
   const filter = {};
+
+  // Handle Sequelize Operators (Symbols)
+  const symbols = Object.getOwnPropertySymbols(where);
+  for (const sym of symbols) {
+    const desc = sym.toString();
+    if (desc.includes('or')) {
+      const conditions = where[sym];
+      if (Array.isArray(conditions)) {
+        filter['$or'] = conditions.map(whereToFilter);
+      }
+    } else if (desc.includes('and')) {
+      const conditions = where[sym];
+      if (Array.isArray(conditions)) {
+        filter['$and'] = conditions.map(whereToFilter);
+      }
+    }
+  }
+
+  // Handle regular keys
   Object.keys(where).forEach(k => {
     const v = where[k];
-    // simple translation: if key ends with _id or id, assume it's an ObjectId
     if ((/_id$/.test(k) || k === 'id') && typeof v === 'string') {
       try { filter[k === 'id' ? '_id' : k] = mongooseModels.mongoose.Types.ObjectId(v); } catch (e) { filter[k] = v; }
     } else {
       filter[k] = v;
     }
   });
+
   return filter;
 }
 

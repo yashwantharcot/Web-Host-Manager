@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  TextField,
   Button,
-  Typography,
-  Grid,
-  Paper,
   FormControl,
-  InputLabel,
+  FormLabel,
+  Input,
+  VStack,
+  useToast,
+  Grid,
+  GridItem,
   Select,
-  MenuItem,
   Switch,
-  FormControlLabel
-} from '@mui/material';
+  Textarea,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+} from '@chakra-ui/react';
+import { emailService } from '../../services/api';
 
-const EmailForm = ({ onSubmit, initialData }) => {
-  const [formData, setFormData] = useState({
+const EmailForm = ({ emailId, clientId, initialData, onSuccess, onCancel }) => {
+  const [formData, setFormData] = useState(initialData || {
     email: '',
     password: '',
     hostingProvider: '',
@@ -23,14 +29,17 @@ const EmailForm = ({ onSubmit, initialData }) => {
     status: 'active',
     autoRenew: false,
     renewalCharge: '',
-    notes: ''
+    notes: '',
+    clientId: clientId || '',
   });
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     if (initialData) {
       setFormData({
         ...initialData,
-        password: '' // Don't show password in edit mode
+        password: '', // Don't show password in edit mode
       });
     }
   }, [initialData]);
@@ -39,132 +48,141 @@ const EmailForm = ({ onSubmit, initialData }) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    setLoading(true);
+    try {
+      if (emailId) {
+        await emailService.updateEmailAccount(emailId, formData);
+        toast({ title: 'Email account updated successfully', status: 'success' });
+      } else {
+        await emailService.createEmailAccount(formData);
+        toast({ title: 'Email account created successfully', status: 'success' });
+      }
+      onSuccess();
+    } catch (error) {
+      toast({
+        title: 'Error saving email account',
+        description: error.message,
+        status: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        {initialData ? 'Edit Email Account' : 'Add New Email Account'}
-      </Typography>
-      <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Email Address"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              required={!initialData}
-              helperText={initialData ? "Leave blank to keep current password" : ""}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Hosting Provider"
-              name="hostingProvider"
-              value={formData.hostingProvider}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
+    <Box as="form" onSubmit={handleSubmit}>
+      <VStack spacing={4}>
+        <Grid templateColumns="repeat(2, 1fr)" gap={4} w="100%">
+          <GridItem colSpan={2}>
+            <FormControl isRequired>
+              <FormLabel>Email Address</FormLabel>
+              <Input
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="user@example.com"
+              />
+            </FormControl>
+          </GridItem>
+          <GridItem colSpan={2}>
+            <FormControl isRequired={!emailId}>
+              <FormLabel>Password</FormLabel>
+              <Input
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder={emailId ? "Leave blank to keep current" : "******"}
+              />
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Hosting Provider</FormLabel>
+              <Input
+                name="hostingProvider"
+                value={formData.hostingProvider}
+                onChange={handleChange}
+                placeholder="Google, Outlook, Private etc."
+              />
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Status</FormLabel>
               <Select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                label="Status"
               >
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="suspended">Suspended</MenuItem>
-                <MenuItem value="expired">Expired</MenuItem>
-                <MenuItem value="cancelled">Cancelled</MenuItem>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="expired">Expired</option>
+                <option value="cancelled">Cancelled</option>
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Quota (MB)"
-              name="quota"
-              type="number"
-              value={formData.quota}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Renewal Charge"
-              name="renewalCharge"
-              type="number"
-              value={formData.renewalCharge}
-              onChange={handleChange}
-              InputProps={{
-                startAdornment: '$'
-              }}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <FormControlLabel
-              control={
-                <Switch
-                  name="autoRenew"
-                  checked={formData.autoRenew}
-                  onChange={handleChange}
-                />
-              }
-              label="Auto Renew"
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              multiline
-              rows={3}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-            >
-              {initialData ? 'Update Email Account' : 'Add Email Account'}
-            </Button>
-          </Grid>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Quota (MB)</FormLabel>
+              <NumberInput min={0} value={formData.quota} onChange={(val) => setFormData(prev => ({ ...prev, quota: val }))}>
+                <NumberInputField name="quota" placeholder="1024" />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl>
+              <FormLabel>Renewal Charge ($)</FormLabel>
+              <NumberInput min={0} value={formData.renewalCharge} onChange={(val) => setFormData(prev => ({ ...prev, renewalCharge: val }))}>
+                <NumberInputField name="renewalCharge" placeholder="0.00" />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl display="flex" alignItems="center">
+              <FormLabel mb="0">Auto Renew</FormLabel>
+              <Switch
+                name="autoRenew"
+                isChecked={formData.autoRenew}
+                onChange={handleChange}
+              />
+            </FormControl>
+          </GridItem>
         </Grid>
-      </Box>
-    </Paper>
+        <FormControl>
+          <FormLabel>Notes</FormLabel>
+          <Textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            placeholder="Additional details..."
+            rows={3}
+          />
+        </FormControl>
+        <Box w="100%" display="flex" justifyContent="flex-end" gap={4} pt={4}>
+          <Button onClick={onCancel}>Cancel</Button>
+          <Button type="submit" colorScheme="blue" isLoading={loading}>
+            {emailId ? 'Update' : 'Create'}
+          </Button>
+        </Box>
+      </VStack>
+    </Box>
   );
 };
 
-export default EmailForm; 
+export default EmailForm;

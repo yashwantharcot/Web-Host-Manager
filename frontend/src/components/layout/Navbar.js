@@ -60,16 +60,25 @@ const Navbar = () => {
           >
             {token ? (
               <>
-                <Button
-                  as={RouterLink}
-                  to="/clients"
-                  fontSize={'sm'}
-                  fontWeight={400}
-                  variant={'link'}
-                >
+                <Button as={RouterLink} to="/dashboard" fontSize={'sm'} fontWeight={400} variant={'link'}>
+                  Dashboard
+                </Button>
+                <Button as={RouterLink} to="/clients" fontSize={'sm'} fontWeight={400} variant={'link'}>
                   Clients
                 </Button>
-                <Text fontSize="sm" alignSelf="center">
+                <Button as={RouterLink} to="/domains" fontSize={'sm'} fontWeight={400} variant={'link'}>
+                  Domains
+                </Button>
+                <Button as={RouterLink} to="/websites" fontSize={'sm'} fontWeight={400} variant={'link'}>
+                  Websites
+                </Button>
+                <Button as={RouterLink} to="/emails" fontSize={'sm'} fontWeight={400} variant={'link'}>
+                  Emails
+                </Button>
+                <Button as={RouterLink} to="/settings" fontSize={'sm'} fontWeight={400} variant={'link'}>
+                  Settings
+                </Button>
+                <Text fontSize="sm" alignSelf="center" fontWeight="bold">
                   Hi, {user?.username || 'User'}
                 </Text>
                 <Button
@@ -87,6 +96,7 @@ const Navbar = () => {
                 </Button>
               </>
             ) : (
+
               <>
                 <Button
                   as={RouterLink}

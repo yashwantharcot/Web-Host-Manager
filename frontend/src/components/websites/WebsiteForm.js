@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
-  TextField,
   Button,
-  Typography,
+  FormControl,
+  FormLabel,
+  Input,
+  VStack,
+  useToast,
   Grid,
-  Paper
-} from '@mui/material';
+  GridItem,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Select,
+} from '@chakra-ui/react';
+import { websiteService } from '../../services/api';
 
-const WebsiteForm = ({ onSubmit, initialData = null }) => {
+const WebsiteForm = ({ websiteId, clientId, initialData, onSuccess, onCancel }) => {
   const [formData, setFormData] = useState(initialData || {
     name: '',
     url: '',
@@ -17,128 +27,109 @@ const WebsiteForm = ({ onSubmit, initialData = null }) => {
     password: '',
     hostingProvider: '',
     expiryDate: '',
-    renewalCharge: ''
+    renewalCharge: '',
+    status: 'Active',
+    clientId: clientId || '',
   });
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    setLoading(true);
+    try {
+      if (websiteId) {
+        await websiteService.updateWebsite(websiteId, formData);
+        toast({ title: 'Website updated successfully', status: 'success' });
+      } else {
+        await websiteService.createWebsite(formData);
+        toast({ title: 'Website created successfully', status: 'success' });
+      }
+      onSuccess();
+    } catch (error) {
+      toast({
+        title: 'Error saving website',
+        description: error.message,
+        status: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        {initialData ? 'Edit Website' : 'Add New Website'}
-      </Typography>
-      <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Website Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="URL"
-              name="url"
-              value={formData.url}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Login URL"
-              name="loginUrl"
-              value={formData.loginUrl}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Hosting Provider"
-              name="hostingProvider"
-              value={formData.hostingProvider}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Expiry Date"
-              name="expiryDate"
-              type="date"
-              value={formData.expiryDate}
-              onChange={handleChange}
-              InputLabelProps={{ shrink: true }}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Renewal Charge"
-              name="renewalCharge"
-              type="number"
-              value={formData.renewalCharge}
-              onChange={handleChange}
-              InputProps={{ startAdornment: '$' }}
-              required
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              size="large"
-            >
-              {initialData ? 'Update Website' : 'Add Website'}
-            </Button>
-          </Grid>
+    <Box as="form" onSubmit={handleSubmit}>
+      <VStack spacing={4}>
+        <Grid templateColumns="repeat(2, 1fr)" gap={4} w="100%">
+          <GridItem colSpan={2}>
+            <FormControl isRequired>
+              <FormLabel>Website Name</FormLabel>
+              <Input name="name" value={formData.name} onChange={handleChange} placeholder="My Awesome Website" />
+            </FormControl>
+          </GridItem>
+          <GridItem colSpan={2}>
+            <FormControl isRequired>
+              <FormLabel>URL</FormLabel>
+              <Input name="url" value={formData.url} onChange={handleChange} placeholder="https://example.com" />
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Login URL</FormLabel>
+              <Input name="loginUrl" value={formData.loginUrl} onChange={handleChange} placeholder="https://example.com/wp-admin" />
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Hosting Provider</FormLabel>
+              <Input name="hostingProvider" value={formData.hostingProvider} onChange={handleChange} placeholder="HostGator, Bluehost etc." />
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Username</FormLabel>
+              <Input name="username" value={formData.username} onChange={handleChange} placeholder="admin" />
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Password</FormLabel>
+              <Input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="******" />
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Expiry Date</FormLabel>
+              <Input type="date" name="expiryDate" value={formData.expiryDate ? formData.expiryDate.split('T')[0] : ''} onChange={handleChange} />
+            </FormControl>
+          </GridItem>
+          <GridItem>
+            <FormControl isRequired>
+              <FormLabel>Renewal Charge ($)</FormLabel>
+              <NumberInput min={0} value={formData.renewalCharge} onChange={(valueString) => setFormData(prev => ({ ...prev, renewalCharge: valueString }))}>
+                <NumberInputField placeholder="0.00" />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+          </GridItem>
         </Grid>
-      </Box>
-    </Paper>
+        <Box w="100%" display="flex" justifyContent="flex-end" gap={4} pt={4}>
+          <Button onClick={onCancel}>Cancel</Button>
+          <Button type="submit" colorScheme="blue" isLoading={loading}>
+            {websiteId ? 'Update' : 'Create'}
+          </Button>
+        </Box>
+      </VStack>
+    </Box>
   );
 };
 
-export default WebsiteForm; 
+export default WebsiteForm;

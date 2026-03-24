@@ -29,9 +29,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { domainService } from '../../services/domainService';
-import { clientService } from '../../services/clientService';
-import { websiteService } from '../../services/websiteService';
+import { domainService, clientService, websiteService } from '../../services/api';
+
 
 ChartJS.register(
   CategoryScale,
@@ -66,10 +65,11 @@ const Dashboard = () => {
     try {
       setLoading(true);
       const [domains, clients, websites] = await Promise.all([
-        domainService.getAll(),
-        clientService.getAll(),
-        websiteService.getAll(),
+        domainService.getAllDomains(),
+        clientService.getAllClients(),
+        websiteService.getAllWebsites(),
       ]);
+
 
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
