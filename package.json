@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "A web application for managing user authentication and data.",
-  "main": "server.js",
+  "main": "backend/server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node backend/server.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
