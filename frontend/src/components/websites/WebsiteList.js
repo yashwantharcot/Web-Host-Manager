@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -14,7 +14,6 @@ import {
   HStack,
   VStack,
   Text,
-  Heading,
   useDisclosure,
   Modal,
   ModalOverlay,
@@ -22,7 +21,6 @@ import {
   ModalHeader,
   ModalBody,
   ModalCloseButton,
-  Tooltip,
   Spinner,
   Center,
 } from '@chakra-ui/react';
@@ -37,7 +35,7 @@ const WebsiteList = ({ clientId, websites: initialWebsites, onUpdate }) => {
   const [selectedWebsite, setSelectedWebsite] = useState(null);
   const toast = useToast();
 
-  const fetchWebsites = async () => {
+  const fetchWebsites = useCallback(async () => {
     if (initialWebsites && !clientId) return; // Use initial data if provided and no clientId
     
     setLoading(true);
@@ -57,13 +55,13 @@ const WebsiteList = ({ clientId, websites: initialWebsites, onUpdate }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId, initialWebsites, toast]);
 
   useEffect(() => {
     if (!initialWebsites || clientId) {
       fetchWebsites();
     }
-  }, [clientId, initialWebsites]);
+  }, [clientId, initialWebsites, fetchWebsites]);
 
   const handleEdit = (website) => {
     setSelectedWebsite(website);
