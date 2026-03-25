@@ -24,11 +24,10 @@ import {
   ModalHeader,
   ModalBody,
   ModalCloseButton,
-  useColorModeValue,
   Spinner,
   Center,
 } from '@chakra-ui/react';
-import { EditIcon, DeleteIcon, AddIcon, SearchIcon, DownloadIcon } from '@chakra-ui/icons';
+import { EditIcon, DeleteIcon, AddIcon, DownloadIcon } from '@chakra-ui/icons';
 import { domainService } from '../../services/api';
 import DomainForm from './DomainForm';
 // Removed date-fns and xlsx dependencies

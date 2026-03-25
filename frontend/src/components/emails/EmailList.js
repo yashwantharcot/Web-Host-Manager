@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -35,7 +35,7 @@ const EmailList = ({ clientId, emailAccounts: initialEmails, onUpdate }) => {
   const [selectedEmail, setSelectedEmail] = useState(null);
   const toast = useToast();
 
-  const fetchEmails = async () => {
+  const fetchEmails = useCallback(async () => {
     if (initialEmails && !clientId) return;
     
     setLoading(true);
@@ -55,13 +55,13 @@ const EmailList = ({ clientId, emailAccounts: initialEmails, onUpdate }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId, initialEmails, toast]);
 
   useEffect(() => {
     if (!initialEmails || clientId) {
       fetchEmails();
     }
-  }, [clientId, initialEmails]);
+  }, [clientId, initialEmails, fetchEmails]);
 
   const handleEdit = (email) => {
     setSelectedEmail(email);
