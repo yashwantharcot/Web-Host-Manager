@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -34,7 +34,7 @@ const ClientList = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
       const data = await clientService.getAllClients();
@@ -50,11 +50,11 @@ const ClientList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [fetchClients]);
 
   const handleEdit = (client) => {
     setSelectedClient(client);

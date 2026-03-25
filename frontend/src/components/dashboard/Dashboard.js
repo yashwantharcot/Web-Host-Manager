@@ -5,7 +5,6 @@ import {
   Card,
   CardBody,
   Heading,
-  Text,
   Stat,
   StatLabel,
   StatNumber,
