@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -14,7 +14,6 @@ import {
   SimpleGrid,
   Select,
   HStack,
-  Button,
 } from '@chakra-ui/react';
 import { Line, Bar } from 'react-chartjs-2';
 import {
@@ -51,18 +50,16 @@ const Dashboard = () => {
     totalWebsites: 0,
   });
   const [timeRange, setTimeRange] = useState('30');
-  const [loading, setLoading] = useState(true);
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   useEffect(() => {
     fetchDashboardData();
-  }, [timeRange]);
+  }, []); // Removed timeRange from dependency array as it's not used in fetchDashboardData logic
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
       const [domains, clients, websites] = await Promise.all([
         domainService.getAllDomains(),
         clientService.getAllClients(),
@@ -87,8 +84,6 @@ const Dashboard = () => {
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
