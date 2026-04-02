@@ -46,6 +46,11 @@ app.use('/api/clients', require('./routes/clients'));
 app.use('/api/domains', require('./routes/domains'));
 app.use('/api/emails', require('./routes/emails'));
 
+// Root route
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Web Host Manager API is running' });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
